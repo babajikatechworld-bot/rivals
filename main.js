@@ -1,6 +1,16 @@
+/* --- INLINE SCRIPT #1 (original attrs: ) --- */
+
+// Simple sanitizeHTML utility to prevent basic HTML injection in inserted content.
+function sanitizeHTML(input) {
+    if (input === undefined || input === null) return '';
+    var s = String(input);
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+}
 
 
-/* ----------------- Extracted inline scripts ----------------- */
+/* --- INLINE SCRIPT #2 (original attrs: type="module") --- */
 
 // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -839,16 +849,32 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
             
             let teamSize = 0, totalFee = fee;
             if (mode === 'Duo') teamSize = 2;
-            if (mode === 'Squad') teamSize = 4;
+            if (mode === 'Squad') teamSize = 5;
             
             if (teamSize > 1) {
-                totalFee = fee * teamSize;
+                const chargeableCount = (mode === 'Squad') ? 4 : teamSize;
+             totalFee = fee * chargeableCount;
                 elements.joinFeeDisplayEl.textContent = `₹${totalFee.toFixed(2)} (₹${fee} per player)`;
                 for (let i = 2; i <= teamSize; i++) {
+
+                // Always add teammate name field
+                teamFieldsContainer.innerHTML += `
+                        <div class="mb-3">
+                            <label for="joinTeammate${i}UsernameInput" class="form-label">${ i === 5 ? "Your Team Name" : `Teammate ${i} In-Game Name` }</label>
+                            <input type="text" class="form-control" id="joinTeammate${i}UsernameInput" required>
+                        </div>
+                `;
+
+                // For teammates 2-4 add UID field. Teammate 5 UID is intentionally NOT collected (only name).
+                if (i !== 5) {
                     teamFieldsContainer.innerHTML += `
-                        <div class="mb-3"><label for="joinTeammate${i}UsernameInput" class="form-label">Teammate ${i} In-Game Name</label><input type="text" class="form-control" id="joinTeammate${i}UsernameInput" required></div>
-                        <div class="mb-3"><label for="joinTeammate${i}GameUidInput" class="form-label">Teammate ${i} Free Fire UID</label><input type="text" class="form-control" id="joinTeammate${i}GameUidInput" required></div>`;
+                        <div class="mb-3">
+                            <label for="joinTeammate${i}GameUidInput" class="form-label">Teammate ${i} Free Fire UID</label>
+                            <input type="text" class="form-control" id="joinTeammate${i}GameUidInput" required>
+                        </div>
+                    `;
                 }
+            }
                 teamFieldsContainer.style.display = 'block';
             } else {
                 elements.joinFeeDisplayEl.textContent = `₹${fee.toFixed(2)}`;
@@ -863,15 +889,24 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
              
              let teamSize = 1, totalFee = fee, teammates = [];
              if (mode === 'Duo') teamSize = 2;
-             if (mode === 'Squad') teamSize = 4;
-             totalFee = fee * teamSize;
+             if (mode === 'Squad') teamSize = 5;
+             const chargeableCount = (mode === 'Squad') ? 4 : teamSize;
+             totalFee = fee * chargeableCount;
              
              if (!username || !gameUid) return showStatusMessage(elements.joinTournamentStatusMessage, 'Your In-Game Name and UID are required.', 'warning');
              
              for (let i = 2; i <= teamSize; i++) {
                 const teamUsername = getElement(`joinTeammate${i}UsernameInput`).value.trim();
-                const teamUid = getElement(`joinTeammate${i}GameUidInput`).value.trim();
-                if (!teamUsername || !teamUid) return showStatusMessage(elements.joinTournamentStatusMessage, `Teammate ${i}'s details are required.`, 'warning');
+                let teamUid = '';
+                if (i !== 5) {
+                    // For teammate 2-4, both name and UID required
+                    teamUid = getElement(`joinTeammate${i}GameUidInput`).value.trim();
+                    if (!teamUsername || !teamUid) return showStatusMessage(elements.joinTournamentStatusMessage, `Teammate ${i}'s details are required.`, 'warning');
+                } else {
+                    // For teammate 5 (extra free slot) only username is required, UID is optional / not collected
+                    if (!teamUsername) return showStatusMessage(elements.joinTournamentStatusMessage, `Teammate ${i}'s name is required.`, 'warning');
+                    teamUid = ''; // explicitly empty
+                }
                 teammates.push({ username: teamUsername, uid: teamUid });
              }
 
@@ -882,23 +917,47 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
              let tData = null, transactionResult = null;
 
              try {
-                 transactionResult = await runTransaction(uRef, (profile) => {
-                     if (!profile) throw new Error("User profile missing.");
-                     const spendable = (profile.depositBalance || 0) + (profile.winningCash || 0);
-                     if (spendable < totalFee) throw new Error(`Insufficient balance. Need ₹${totalFee.toFixed(2)}.`);
-                     if (profile.joinedTournaments?.[tId]) return;
+                 
+                transactionResult = await runTransaction(uRef, (profile) => {
+                    if (!profile) throw new Error("User profile missing.");
 
-                     let fromDeposit = Math.min(profile.depositBalance || 0, totalFee);
-                     let fromWinnings = totalFee - fromDeposit;
-                     profile.depositBalance -= fromDeposit;
-                     profile.winningCash -= fromWinnings;
+                    // include bonusCash as spendable
+                    const deposit = Number(profile.depositBalance || 0);
+                    const winning = Number(profile.winningCash || 0);
+                    const bonus = Number(profile.bonusCash || 0);
 
-                     if (!profile.joinedTournaments) profile.joinedTournaments = {};
-                     profile.joinedTournaments[tId] = true;
-                     profile.username = username;
-                     profile.gameUid = gameUid;
-                     return profile;
-                 });
+                    const spendable = deposit + winning + bonus;
+                    if (spendable < totalFee) throw new Error(`Insufficient balance. Need ₹${totalFee.toFixed(2)}.`);
+
+                    // prevent double join
+                    if (profile.joinedTournaments?.[tId]) return;
+
+                    // Deduction order: use bonus first, then deposit, then winning
+                    let remaining = totalFee;
+                    const fromBonus = Math.min(bonus, remaining);
+                    remaining -= fromBonus;
+
+                    const fromDeposit = Math.min(deposit, remaining);
+                    remaining -= fromDeposit;
+
+                    const fromWinnings = remaining; // whatever is left
+
+                    // apply deductions safely
+                    profile.bonusCash = (profile.bonusCash || 0) - fromBonus;
+                    profile.depositBalance = (profile.depositBalance || 0) - fromDeposit;
+                    profile.winningCash = (profile.winningCash || 0) - fromWinnings;
+
+                    if (!profile.joinedTournaments) profile.joinedTournaments = {};
+                    profile.joinedTournaments[tId] = true;
+                    profile.username = username;
+                    profile.gameUid = gameUid;
+
+                    // attach a helper for logging/audit (will be present in returned snapshot)
+                    profile._lastJoinBreakdown = { bonus: fromBonus, deposit: fromDeposit, winning: fromWinnings };
+
+                    return profile;
+                });
+
 
                  if (!transactionResult.committed) throw new Error("Join failed. Already joined or insufficient balance.");
 
@@ -912,7 +971,12 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
                  await update(ref(db), { [`tournaments/${tId}/registeredPlayers/${currentUser.uid}`]: registrationData });
                  
                  // MATCH JOIN TRANSACTION HISTORY FIX
-                 await recordTransaction(currentUser.uid, 'tournament_join', -totalFee, `Joined: ${tData.name || 'Tournament'}`, { tournamentId: tId });
+                                 // fetch breakdown from transaction snapshot (attached as _lastJoinBreakdown)
+                const newProfile = transactionResult.snapshot?.val() || {};
+                const breakdown = newProfile._lastJoinBreakdown || { bonus:0, deposit:0, winning:0 };
+                // record transaction with breakdown metadata (backend should validate)
+                await recordTransaction(currentUser.uid, 'tournament_join', -totalFee, `Joined: ${tData.name || 'Tournament'}`, { tournamentId: tId, breakdown });
+
                  
                  alert(`Joined successfully! ₹${totalFee.toFixed(2)} deducted.`);
                  elements.joinTournamentDetailsModalInstance.hide();
@@ -1045,6 +1109,175 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
             const listEl = elements.myMatchesDisplayListEl, emptyEl = elements.myMatchesEmptyStateEl;
             listEl.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-accent"></div></div>';
             emptyEl.style.display = 'none';
+
+            function createCompletedMatchCard(m) {
+                const card = document.createElement('div');
+                card.className = 'custom-card mb-3 p-3';
+                const when = m.date ? formatFullDateTime(m.date) : '';
+                const title = sanitizeHTML(m.tournamentName || 'Tournament');
+                const rank = (m.rank !== undefined && m.rank !== null) ? `#${m.rank}` : 'N/A';
+                const kills = (m.kills !== undefined && m.kills !== null) ? m.kills : 'N/A';
+                const earnings = (m.earnings || 0);
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <h5 class="tournament-card-title mb-1">${title}</h5>
+                        <p class="small text-secondary mb-1">${when}</p>
+                        <div class="d-flex gap-3 small text-secondary">
+                          <div><span class="d-block">Rank</span><strong>${rank}</strong></div>
+                          <div><span class="d-block">Kills</span><strong>${kills}</strong></div>
+                          <div><span class="d-block">Winnings</span><strong class="text-success">₹${earnings.toLocaleString('en-IN')}</strong></div>
+                        </div>
+                      </div>
+                      <div style="min-width:80px;text-align:right">
+                        <button class="btn btn-sm btn-outline-light view-result-btn" data-tid="${m.tournamentId || ''}">View</button>
+                      </div>
+                    </div>
+                `;
+                const btn = card.querySelector('.view-result-btn');
+                if (btn) {
+                    btn.addEventListener('click', async (e) => {
+                        const tid = e.currentTarget.dataset.tid;
+                        if (!tid) return;
+                        try {
+                            const snap = await get(ref(db, `tournaments/${tid}`));
+                            if (!snap.exists()) { alert('Tournament data not found.'); return; }
+                            const t = snap.val();
+                            elements.detailsBannerEl && (elements.detailsBannerEl.src = t.bannerUrl || t.imageUrl || '');
+                            elements.detailsTitleEl && (elements.detailsTitleEl.textContent = t.name || 'Tournament');
+                            elements.detailsSubtitleEl && (elements.detailsSubtitleEl.textContent = t.description || '');
+                            elements.detailsModeEl && (elements.detailsModeEl.textContent = t.mode || t.type || '');
+                            elements.detailsGameModeEl && (elements.detailsGameModeEl.textContent = appSettings.games?.[t.gameId]?.name || t.gameId || '');
+                            elements.detailsEntryFeeEl && (elements.detailsEntryFeeEl.textContent = t.entryFee ? `₹${t.entryFee}` : 'Free');
+                            elements.detailsScheduleEl && (elements.detailsScheduleEl.textContent = t.startTime ? formatFullDateTime(t.startTime) : '');
+                            elements.detailsPrizePoolEl && (elements.detailsPrizePoolEl.textContent = t.prizePool ? `₹${t.prizePool}` : '-');
+                            elements.detailsPerKillEl && (elements.detailsPerKillEl.textContent = t.perKill ? `₹${t.perKill}` : '-');
+                            elements.detailsRulesEl && (elements.detailsRulesEl.textContent = t.rules || '');
+                            showSection && showSection('match-details-section', { title: t.name || 'Match Details' });
+                        } catch(err) {
+                            console.error('Failed to load tournament details', err);
+                            alert('Could not load tournament details.');
+                        }
+                    });
+                }
+                return card;
+            }
+
+            // First, try to load from user's matchHistory (preferred, contains complete result data)
+            
+            if (status === 'completed') {
+                try {
+                    // Preferred: use matchHistory (if present) to map back to tournament ids and render tournament cards.
+                    const snap = await get(ref(db, `users/${currentUser.uid}/matchHistory`));
+                    listEl.innerHTML = '';
+                    if (snap.exists()) {
+                        const historyObj = snap.val();
+                        // Try to render each history entry as a tournament-style card if possible
+                        const entries = Object.values(historyObj || {}).sort((a,b)=> (b.date || 0) - (a.date || 0));
+                        if (entries.length > 0) {
+                            // For each history entry, if we have a tournamentId, fetch tournament and render full tournament card.
+                            // Otherwise create a lightweight tournament-like card using the same structure.
+                            for (const h of entries) {
+                                if (h.tournamentId) {
+                                    try {
+                                        const tSnap = await get(ref(db, `tournaments/${h.tournamentId}`));
+                                        if (tSnap.exists()) {
+                                            const t = tSnap.val();
+                                            listEl.appendChild(createTournamentCardElement(h.tournamentId, t, { compact: true, completedEntry: h }));
+                                            continue;
+                                        }
+                                    } catch(e) {
+                                        // ignore and fallback to lightweight card
+                                    }
+                                }
+                                // Lightweight tournament-like card for history entry
+                                const card = document.createElement('div');
+                                card.className = 'tournament-card completed compact';
+                                card.innerHTML = `
+                                    <div class="card-banner" style="background:#111;padding:12px;border-radius:8px;">
+                                        <h5 style="margin:0 0 6px 0;">${sanitizeHTML(h.tournamentName || 'Tournament')}</h5>
+                                        <div class="small text-secondary">${h.date ? formatFullDateTime(h.date) : ''}</div>
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                                            <div class="small text-secondary">
+                                                <div>Rank <strong>#${h.rank ?? 'N/A'}</strong></div>
+                                                <div>Kills <strong>${h.kills ?? 'N/A'}</strong></div>
+                                                <div>Winnings <strong class="text-success">₹${(h.earnings||0).toLocaleString('en-IN')}</strong></div>
+                                            </div>
+                                            <div style="min-width:80px;text-align:right">
+                                                <button class="btn btn-sm btn-outline-light view-result-btn" data-tid="${h.tournamentId || ''}">View</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                const btn = card.querySelector('.view-result-btn');
+                                if (btn) {
+                                    btn.addEventListener('click', async (e) => {
+                                        const tid = e.currentTarget.dataset.tid;
+                                        if (!tid) { alert('No tournament id available'); return; }
+                                        try {
+                                            const ts = await get(ref(db, `tournaments/${tid}`));
+                                            if (!ts.exists()) { alert('Tournament data not found.'); return; }
+                                            const t = ts.val();
+                                            elements.detailsBannerEl && (elements.detailsBannerEl.src = t.bannerUrl || t.imageUrl || '');
+                                            elements.detailsTitleEl && (elements.detailsTitleEl.textContent = t.name || 'Tournament');
+                                            elements.detailsSubtitleEl && (elements.detailsSubtitleEl.textContent = t.description || '');
+                                            showSection && showSection('match-details-section', { title: t.name || 'Match Details' });
+                                        } catch(err) {
+                                            console.error('Failed to load tournament details', err);
+                                            alert('Could not load tournament details.');
+                                        }
+                                    });
+                                }
+                                listEl.appendChild(card);
+                            } // end for
+                            emptyEl.style.display = 'none';
+                            return;
+                        }
+                    }
+
+                    // Fallback: same logic as before - try joinedTournaments -> fetch tournaments and render cards for completed ones
+                    const joinedIds = Object.keys(userProfile.joinedTournaments || {});
+                    if (joinedIds.length === 0) {
+                        listEl.innerHTML = '';
+                        elements.myMatchesEmptyTitleEl.textContent = 'No completed matches!';
+                        elements.myMatchesEmptySubtitleEl.textContent = 'You have no completed match records yet.';
+                        emptyEl.style.display = 'flex';
+                        return;
+                    }
+                    const snaps = await Promise.all(joinedIds.map(id => get(ref(db, `tournaments/${id}`))));
+                    const completed = [];
+                    for (let i=0;i<snaps.length;i++) {
+                        const s = snaps[i];
+                        if (!s.exists()) continue;
+                        const t = s.val();
+                        if (!t || (t.status !== 'completed' && t.status !== 'ended' && t.status !== 'results' && t.status !== 'result')) continue;
+                        completed.push([joinedIds[i], t]);
+                    }
+                    if (completed.length > 0) {
+                        // render tournament cards using existing createTournamentCardElement
+                        listEl.innerHTML = '';
+                        completed.sort((a,b)=> (b[1].startTime || 0) - (a[1].startTime || 0));
+                        completed.forEach(([id,t]) => listEl.appendChild(createTournamentCardElement(id, t, { compact: false, completed: true })));
+                        emptyEl.style.display = 'none';
+                        return;
+                    }
+
+                    // nothing found
+                    elements.myMatchesEmptyTitleEl.textContent = 'No completed matches!';
+                    elements.myMatchesEmptySubtitleEl.textContent = 'You have no completed match records yet.';
+                    listEl.innerHTML = '';
+                    emptyEl.style.display = 'flex';
+                    return;
+                } catch(error) {
+                    console.error('Error loading completed matches (card mode):', error);
+                    listEl.innerHTML = `<p class="text-center text-danger p-3">Could not load completed matches: ${error && error.message ? error.message : error}</p>`;
+                    emptyEl.style.display = 'flex';
+                    return;
+                }
+            }
+
+
+            // Default behaviour for upcoming/ongoing
             const joinedIds = Object.keys(userProfile.joinedTournaments || {});
             if (joinedIds.length === 0) {
                 listEl.innerHTML = '';
@@ -1053,15 +1286,20 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
                 emptyEl.style.display = 'flex';
                 return;
             }
-            const snapshots = await Promise.all(joinedIds.map(id => get(ref(db, `tournaments/${id}`))));
-            const filtered = snapshots.map((s, i) => s.exists() && s.val().status === status ? [joinedIds[i], s.val()] : null).filter(Boolean);
-            listEl.innerHTML = '';
-            if (filtered.length > 0) {
-                filtered.sort(([, a], [, b]) => (b.startTime || 0) - (a.startTime || 0)).forEach(([id, t]) => listEl.appendChild(createTournamentCardElement(id, t)));
-            } else {
-                elements.myMatchesEmptyTitleEl.textContent = `No ${status} matches!`;
-                elements.myMatchesEmptySubtitleEl.textContent = status === 'completed' ? "Results will be available shortly." : "Check other categories for your matches.";
-                emptyEl.style.display = 'flex';
+            try {
+                const snapshots = await Promise.all(joinedIds.map(id => get(ref(db, `tournaments/${id}`))));
+                const filtered = snapshots.map((s, i) => s.exists() && s.val().status === status ? [joinedIds[i], s.val()] : null).filter(Boolean);
+                listEl.innerHTML = '';
+                if (filtered.length > 0) {
+                    filtered.sort(([, a], [, b]) => (b.startTime || 0) - (a.startTime || 0)).forEach(([id, t]) => listEl.appendChild(createTournamentCardElement(id, t)));
+                } else {
+                    elements.myMatchesEmptyTitleEl.textContent = `No ${status} matches!`;
+                    elements.myMatchesEmptySubtitleEl.textContent = status === 'completed' ? "Results will be available shortly." : "Check other categories for your matches.";
+                    emptyEl.style.display = 'flex';
+                }
+            } catch(err) {
+                console.error('Failed to load joined tournaments', err);
+                listEl.innerHTML = `<p class="text-center text-danger p-3">Could not load matches: ${err && err.message ? err.message : err}</p>`;
             }
         }
         function initializeEventListeners() {
@@ -1373,6 +1611,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 // ===== /NEWS: client-side paging =====
 
+
+/* --- INLINE SCRIPT #3 (original attrs: ) --- */
+
 (function(){
   function safeAudio(id){
     try{
@@ -1388,6 +1629,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   safeAudio('bgMusic');
   safeAudio('clickSound');
 })();
+
+
+/* --- INLINE SCRIPT #4 (original attrs: ) --- */
 
 (function(){
   // Section switcher fallback (if project doesn't already have one)
@@ -1465,6 +1709,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   }
 })();
 
+
+/* --- INLINE SCRIPT #5 (original attrs: ) --- */
+
 // v6: ensure dark skin persists after navigation / re-render
 (function(){
   function applyNewsSkin(){
@@ -1500,6 +1747,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   window.__applyNewsSkin = applyNewsSkin;
 })();
 
+
+/* --- INLINE SCRIPT #6 (original attrs: ) --- */
+
 // v8: clicking the header logo opens Wallet section
 (function(){
   var logo = document.getElementById('appLogoEl');
@@ -1521,6 +1771,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
     window.__walletMo.observe(hdr, { childList:true, subtree:true });
   }
 })();
+
+
+/* --- INLINE SCRIPT #7 (original attrs: ) --- */
 
 // v13: username click opens profile and focuses name editor
 (function(){
@@ -1546,6 +1799,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   var mo = new MutationObserver(bindUserNameClick);
   mo.observe(document.body, {childList:true, subtree:true});
 })();
+
+
+/* --- INLINE SCRIPT #8 (original attrs: ) --- */
 
 // v14: Click on username => open "Change Your Name" modal directly
 (function(){
@@ -1587,6 +1843,9 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   var mo = new MutationObserver(bind);
   mo.observe(document.body, {childList:true, subtree:true});
 })();
+
+
+/* --- INLINE SCRIPT #9 (original attrs: ) --- */
 
 // v15: Notifications switch logic (localStorage + browser permission)
 (function(){
