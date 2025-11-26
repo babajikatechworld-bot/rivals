@@ -1,4 +1,3 @@
-/* --- INLINE SCRIPT #1 (original attrs: ) --- */
 
 // Simple sanitizeHTML utility to prevent basic HTML injection in inserted content.
 function sanitizeHTML(input) {
@@ -10,9 +9,8 @@ function sanitizeHTML(input) {
 }
 
 
-/* --- INLINE SCRIPT #2 (original attrs: type="module") --- */
 
-// Firebase Imports
+        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getDatabase, ref, get, set, update, push, query, orderByChild, equalTo, onValue, runTransaction, off, limitToLast, serverTimestamp, limitToFirst, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
         
@@ -540,8 +538,10 @@ function sanitizeHTML(input) {
                     } else {
                         const signupBonus = appSettings.signupBonus ?? 10;
                         const displayName = user.displayName || elements.signupNameInput.value.trim() || user.email?.split('@')[0] || 'User';
+                        const mobileInputEl = document.getElementById('signupMobileInputEl');
+                        const mobileNumber = mobileInputEl ? mobileInputEl.value.trim() : '';
                         const newUserProfile = {
-                            uid: user.uid, displayName: displayName, email: user.email || null, photoURL: user.photoURL || null,
+                            uid: user.uid, displayName: displayName, email: user.email || null, photoURL: user.photoURL || null, mobileNumber: mobileNumber || null,
                             depositBalance: 0, winningCash: 0, bonusCash: signupBonus,
                             totalMatches: 0, wonMatches: 0, totalKills: 0, totalEarnings: 0, referralEarnings: 0,
                             createdAt: serverTimestamp(), referralCode: generateReferralCode(), joinedTournaments: {},
@@ -687,6 +687,13 @@ function sanitizeHTML(input) {
             }
 
             card.innerHTML = `<img loading="lazy" decoding="async" fetchpriority="low" src="${bannerUrl}" alt="Tournament Banner" class="tournament-banner-image"><div class="tournament-card-content"><div class="tournament-card-header"><div class="tournament-card-tags">${t.mode ? `<span>${t.mode}</span>` : ''}${t.map ? `<span>${t.map}</span>` : ''}${t.tags ? (Array.isArray(t.tags) ? t.tags.map(tag => `<span>${tag}</span>`).join('') : Object.values(t.tags).map(tag => `<span>${tag}</span>`).join('')) : ''}</div><div class="tournament-card-timer">${timerTxt}</div></div><h3 class="tournament-card-title">${t.icon ? `<i class="${t.icon}"></i>` : '<i class="bi bi-joystick text-accent"></i>'} ${t.name || 'Tournament'}</h3><p class="small text-secondary mb-2"><i class="bi bi-calendar-event"></i> ${sTimeLoc}</p><div class="tournament-card-info"><div class="info-item"><span>Prize Pool</span><strong><i class="bi bi-trophy-fill text-accent prize-icon"></i> ₹${pPool}</strong></div><div class="info-item"><span>Per Kill</span><strong>₹${pkPrize}</strong></div><div class="info-item"><span>Entry Fee</span><strong class="${eFee > 0 ? 'text-info' : ''}">${eFee > 0 ? `₹${eFee}` : 'Free'}</strong></div></div><div class="tournament-card-spots">${spotsTxt}${maxP > 0 ? `<div class="progress mt-1" style="height: 6px;"><div class="progress-bar bg-warning" role="progressbar" style="width: ${progP}%"></div></div>` : ''}</div><div class="tournament-card-actions"><button class="btn btn-custom btn-custom-secondary btn-sm btn-details" data-tournament-id="${tId}">Details</button>${chatBtnHtml}${joinBtnHtml}</div>${idPassBtn}</div>`;
+            card.innerHTML = `<img loading="lazy" decoding="async" fetchpriority="low" src="${bannerUrl}" alt="Tournament Banner" class="tournament-banner-image"><div class="tournament-card-content"><div class="tournament-card-header"><div class="tournament-card-tags">${t.mode ? `<span>${t.mode}</span>` : ''}${t.map ? `<span>${t.map}</span>` : ''}${t.tags ? (Array.isArray(t.tags) ? t.tags.map(tag => `<span>${tag}</span>`).join('') : Object.values(t.tags).map(tag => `<span>${tag}</span>`).join('')) : ''}</div><div class="tournament-card-timer">${timerTxt}</div></div><h3 class="tournament-card-title">${t.icon ? `<i class="${t.icon}"></i>` : '<i class="bi bi-joystick text-accent"></i>'} ${t.name || 'Tournament'}</h3><p class="small text-secondary mb-2"><i class="bi bi-calendar-event"></i> ${sTimeLoc}</p><div class="tournament-card-info"><div class="info-item"><span>Prize Pool</span><strong><i class="bi bi-trophy-fill text-accent prize-icon"></i> ₹${pPool}</strong></div><div class="info-item"><span>Per Kill</span><strong>₹${pkPrize}</strong></div><div class="info-item"><span>Entry Fee</span><strong class="${eFee > 0 ? 'text-info' : ''}">${eFee > 0 ? `₹${eFee}` : 'Free'}</strong></div></div><div class="tournament-card-spots">${spotsTxt}${maxP > 0 ? `<div class="progress mt-1" style="height: 6px;"><div class="progress-bar bg-warning" role="progressbar" style="width: ${progP}%"></div></div>` : ''}</div><div class="tournament-card-actions"><button class="btn btn-custom btn-custom-secondary btn-sm btn-details" data-tournament-id="${tId}">Details</button>${chatBtnHtml}${joinBtnHtml}</div>${idPassBtn}</div>`;
+            const openDetails = () => showMatchDetailsPage(tId);
+            card.addEventListener('click', (e) => {
+                const isButton = e.target.closest('.btn-join, .btn-details, .btn-idpass, .btn-chat');
+                if (isButton) return;
+                openDetails();
+            });
 
             card.querySelector('.btn-join')?.addEventListener('click', handleJoinTournamentClick);
             card.querySelector('.btn-details')?.addEventListener('click', (e) => showMatchDetailsPage(e.currentTarget.dataset.tournamentId));
@@ -695,7 +702,82 @@ function sanitizeHTML(input) {
             return card;
         }
 
-        async function showMatchDetailsPage(tId){
+        
+
+
+
+
+function renderJoinedPlayersList(t){
+  const container = document.getElementById('joinedPlayersList');
+  const section = document.getElementById('joinedPlayersSection');
+  const headingLeft = document.getElementById('joinedPlayersLeftHeading');
+  const headingRight = document.getElementById('joinedPlayersRightHeading');
+  if(!container || !section){ return; }
+  container.innerHTML = '';
+  section.style.display = 'none';
+  if(!t || !t.registeredPlayers){ return; }
+
+  const entries = Object.entries(t.registeredPlayers);
+  if(!entries.length){ return; }
+
+  const mode = (t.mode || '').toLowerCase();
+
+  // headings: left = Slot, right = Player/Team
+  if(headingLeft && headingRight){
+    if(mode === 'squad'){
+      headingLeft.textContent = 'Slot';
+      headingRight.textContent = 'Team Name';
+    } else {
+      headingLeft.textContent = 'Slot';
+      headingRight.textContent = 'Player';
+    }
+  }
+
+  // sort by numeric slotNumber ascending
+  const sorted = entries.slice().sort(([,a],[,b]) => {
+    const sa = a && a.slotNumber ? parseInt(a.slotNumber,10) : Infinity;
+    const sb = b && b.slotNumber ? parseInt(b.slotNumber,10) : Infinity;
+    return sa - sb;
+  });
+
+  const parts = [];
+  sorted.forEach(([uid, reg]) => {
+    if(!reg) return;
+    const teammates = reg.teammates || [];
+    let name = reg.username || 'Player';
+
+    if(mode === 'squad'){
+      // teammates[3] = Your Team Name (5th player) as per your setup
+      if(teammates[3] && teammates[3].username){
+        name = teammates[3].username;
+      }
+    }
+
+    const slotNumber = reg.slotNumber ? parseInt(reg.slotNumber,10) : null;
+    const slot = slotNumber && !Number.isNaN(slotNumber) ? String(slotNumber) : '?';
+
+    parts.push(`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;">
+                  <span style="font-weight:600;font-size:0.98rem;color:#f9fafb;">${slot}</span>
+                  <span style="font-size:0.98rem;color:#f9fafb;">${name}</span>
+                </div>`);
+  });
+
+  if(!parts.length){ return; }
+  container.innerHTML = parts.join('');
+  section.style.display = 'block';
+}
+
+function updateDetailsSlotBox(t){
+  const b=document.getElementById('detailsSlotBox');
+  const e=document.getElementById('detailsSlotEl');
+  if(!b||!e)return;
+  b.style.display='none'; e.textContent='';
+  if(!currentUser||!t||!t.registeredPlayers)return;
+  const r=t.registeredPlayers[currentUser.uid];
+  if(r&&r.slotNumber){ b.style.display='block'; e.textContent='#'+r.slotNumber; }
+}
+
+async function showMatchDetailsPage(tId){
             if (!tId) return;
             showGlobalLoader(true);
             try {
@@ -712,6 +794,8 @@ function sanitizeHTML(input) {
                 elements.detailsPrizePoolEl.innerHTML = `<i class="bi bi-trophy-fill text-accent"></i> ₹${t.prizePool || 0}`;
                 elements.detailsPerKillEl.innerHTML = `<i class="bi bi-fire text-danger"></i> ₹${t.perKillPrize || 0}`;
                 elements.detailsRulesEl.innerHTML = (t.description || 'Standard rules apply.').replace(/\n/g, '<br>');
+                updateDetailsSlotBox(t);
+                renderJoinedPlayersList(t);
                 
                 const isJ = currentUser && userProfile?.joinedTournaments?.[tId];
                 const regC = t.registeredPlayers ? Object.keys(t.registeredPlayers).length : 0;
@@ -786,8 +870,77 @@ function sanitizeHTML(input) {
         async function loadRecentTransactions() { if (!currentUser || !elements.recentTransactionsList) return; const limit = 5; elements.recentTransactionsList.innerHTML = ''; elements.recentTransactionsList.classList.add('placeholder-glow'); for (let i = 0; i < 3; i++) elements.recentTransactionsList.innerHTML += `<div class="custom-card p-2 mb-2 placeholder-glow"><div class="d-flex justify-content-between"><span class="placeholder col-5 h-16"></span><span class="placeholder col-3 h-16"></span></div><div class="small text-secondary mt-1"><span class="placeholder col-6 h-14"></span></div></div>`; if (elements.noTransactionsMessage) { elements.noTransactionsMessage.style.display = 'block'; elements.noTransactionsMessage.textContent = 'Loading transactions...'; } try { const transRef = query(ref(db, `transactions/${currentUser.uid}`), limitToLast(limit)); const s = await get(transRef); const transactions = s.val() || {}; const sortedT = Object.values(transactions).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); removePlaceholders(elements.recentTransactionsList); elements.recentTransactionsList.innerHTML = ''; if (sortedT.length > 0) { if (elements.noTransactionsMessage) elements.noTransactionsMessage.style.display = 'none'; sortedT.forEach(t => { const item = document.createElement('div'); item.className = 'custom-card p-2 mb-2 d-flex justify-content-between align-items-center'; const isCr = t.amount > 0; const amt = `${isCr ? '+' : ''}<span class="currency-symbol">₹</span>${Math.abs(t.amount || 0).toFixed(2)}`; const time = t.timestamp ? new Date(t.timestamp).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'; item.innerHTML = `<div><div class="small fw-bold">${t.description || t.type || 'Txn'}</div><div class="small text-secondary">${time}</div></div><div class="fw-bold ${isCr ? 'text-success' : 'text-danger'}">${amt}</div>`; elements.recentTransactionsList.appendChild(item); }); } else if (elements.noTransactionsMessage) { elements.noTransactionsMessage.style.display = 'block'; elements.noTransactionsMessage.textContent = 'No recent transactions.'; } } catch (e) { console.error("Transactions load failed:", e); removePlaceholders(elements.recentTransactionsList); elements.recentTransactionsList.innerHTML = '<p class="text-danger tc">Could not load transactions.</p>'; if (elements.noTransactionsMessage) elements.noTransactionsMessage.style.display = 'none'; } }
         function handleWithdrawClick() { if (!currentUser || !elements.withdrawModalInstance) return; const wc = userProfile.winningCash || 0; const minW = appSettings?.minWithdraw || 50; elements.minWithdrawAmount.textContent = minW; elements.withdrawModalBalance.textContent = `₹${wc.toFixed(2)}`; elements.withdrawAmountInput.value = ''; elements.withdrawAmountInput.min = minW; elements.withdrawMethodInput.value = userProfile.upiId || ''; clearStatusMessage(elements.withdrawStatusMessage); elements.withdrawModalInstance.show(); }
         async function submitWithdrawRequestHandler() { if (!currentUser || !elements.withdrawModalInstance) return; const amt = parseFloat(elements.withdrawAmountInput.value); const mtd = elements.withdrawMethodInput.value.trim(); const wc = userProfile.winningCash || 0; const minW = appSettings?.minWithdraw || 50; clearStatusMessage(elements.withdrawStatusMessage); if (isNaN(amt) || amt <= 0) { showStatusMessage(elements.withdrawStatusMessage, 'Invalid amount.', 'warning'); return; } if (amt < minW) { showStatusMessage(elements.withdrawStatusMessage, `Min withdraw ₹${minW}.`, 'warning'); return; } if (amt > wc) { showStatusMessage(elements.withdrawStatusMessage, 'Insufficient winning balance.', 'warning'); return; } if (!mtd) { showStatusMessage(elements.withdrawStatusMessage, 'Enter withdrawal method.', 'warning'); return; } elements.submitWithdrawRequestBtn.disabled = true; elements.submitWithdrawRequestBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...'; let transactionCommitted = false; try { const uRef = ref(db, `users/${currentUser.uid}`); const txResult = await runTransaction(uRef, (prof) => { if (prof) { if ((prof.winningCash || 0) >= amt) { prof.winningCash = (prof.winningCash || 0) - amt; return prof; } else { throw new Error("Insufficient winning balance (Tx)."); } } else { throw new Error("Profile missing (Tx)."); } }); if (!txResult.committed) { throw new Error("Failed to update balance. Please try again."); } transactionCommitted = true; const wrRef = ref(db, 'withdrawals'); const newReq = { userId: currentUser.uid, userName: userProfile.displayName || currentUser.email, amount: amt, methodDetails: { methodName: mtd.includes('@') ? 'UPI' : 'Bank/Other', accountInfo: mtd }, status: 'pending', requestTimestamp: serverTimestamp(), userEmail: currentUser.email || 'N/A' }; const newWithdrawalRef = await push(wrRef, newReq); await recordTransaction(currentUser.uid, 'withdraw_request', -amt, `Withdrawal Request to ${mtd}`, { withdrawalId: newWithdrawalRef.key }); showStatusMessage(elements.withdrawStatusMessage, 'Request submitted successfully!', 'success', false); setTimeout(() => { if (elements.withdrawModalInstance) elements.withdrawModalInstance.hide(); }, 2500); if (currentSectionId === 'wallet-section') loadRecentTransactions(); } catch (e) { console.error("Withdraw error:", e); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}`, 'danger'); if (transactionCommitted) { const uRef = ref(db, `users/${currentUser.uid}`); try { await runTransaction(uRef, (prof) => { if (prof) { prof.winningCash = (prof.winningCash || 0) + amt; } return prof; }); await recordTransaction(currentUser.uid, 'withdraw_failed_refund', amt, `Refund Failed Withdrawal Request`); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}. Amount refunded.`, 'danger'); } catch (refundError) { console.error("CRITICAL: FAILED TO REFUND WINNING CASH!", refundError); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}. CRITICAL: Failed to refund amount! Contact support.`, 'danger', false); } } } finally { elements.submitWithdrawRequestBtn.disabled = false; elements.submitWithdrawRequestBtn.innerHTML = 'Submit Request'; } }
-        async function handleIdPasswordClick(event) { if (!elements.idPasswordModalInstance) return; const tId = event.currentTarget.dataset.tournamentId; if (!tId || !currentUser || !userProfile?.joinedTournaments?.[tId]) { alert("Join the tournament first or refresh the page."); return; } elements.roomIdDisplay.innerHTML = '<span class="placeholder col-6"></span>'; elements.roomPasswordDisplay.innerHTML = '<span class="placeholder col-6"></span>'; elements.idPasswordModalInstance.show(); try { const s = await get(ref(db, `tournaments/${tId}`)); removePlaceholders(elements.roomIdDisplay.closest('.placeholder-glow')); removePlaceholders(elements.roomPasswordDisplay.closest('.placeholder-glow')); if (s.exists()) { const t = s.val(); elements.roomIdDisplay.textContent = (t.showIdPass && t.roomId) ? t.roomId : 'Not updated yet'; elements.roomPasswordDisplay.textContent = (t.showIdPass && t.roomPassword) ? t.roomPassword : 'Not updated yet'; } else { elements.roomIdDisplay.textContent = 'Not Found'; elements.roomPasswordDisplay.textContent = 'Not Found'; } } catch (e) { console.error("ID/Pass fetch error:", e); removePlaceholders(elements.roomIdDisplay.closest('.placeholder-glow')); removePlaceholders(elements.roomPasswordDisplay.closest('.placeholder-glow')); elements.roomIdDisplay.textContent = 'Error'; elements.roomPasswordDisplay.textContent = 'Error'; } }
-        async function handlePolicyClick(event) { if (!elements.policyModalInstance) return; event.preventDefault(); const policyType = event.currentTarget.dataset.policy; if (!policyType) return; let title = '', modalBodyContent = '<div class="text-center p-5"><div class="spinner-border spinner-border-sm"></div></div>'; elements.policyModalBody.innerHTML = modalBodyContent; switch (policyType) { case 'privacy': title = 'Privacy Policy'; modalBodyContent = appSettings.policyPrivacy || 'Content not available.'; break; case 'terms': title = 'Terms and Conditions'; modalBodyContent = appSettings.policyTerms || 'Content not available.'; break; case 'refund': title = 'Refund and Cancellation'; modalBodyContent = appSettings.policyRefund || 'Content not available.'; break; case 'fairPlay': title = 'Fair Play Policy'; modalBodyContent = appSettings.policyFairPlay || 'Content not available.'; break; 
+        async function handleIdPasswordClick(event) {
+    if (!elements.idPasswordModalInstance) return;
+    const tId = event.currentTarget.dataset.tournamentId;
+    if (!tId || !currentUser || !userProfile?.joinedTournaments?.[tId]) {
+        alert("Join the tournament first or refresh the page.");
+        return;
+    }
+
+    elements.roomIdDisplay.innerHTML = '<span class="placeholder col-6"></span>';
+    elements.roomPasswordDisplay.innerHTML = '<span class="placeholder col-6"></span>';
+
+    const slotEl = document.getElementById('roomSlotDisplayEl');
+    if (slotEl) {
+        slotEl.innerHTML = '<span class="placeholder col-4"></span>';
+    }
+
+    elements.idPasswordModalInstance.show();
+
+    try {
+        const s = await get(ref(db, `tournaments/${tId}`));
+
+        const roomIdBox = elements.roomIdDisplay.closest('.placeholder-glow');
+        const roomPassBox = elements.roomPasswordDisplay.closest('.placeholder-glow');
+        if (roomIdBox) removePlaceholders(roomIdBox);
+        if (roomPassBox) removePlaceholders(roomPassBox);
+        if (slotEl) {
+            const slotBox = slotEl.closest('.placeholder-glow');
+            if (slotBox) removePlaceholders(slotBox);
+        }
+
+        if (s.exists()) {
+            const t = s.val();
+
+            elements.roomIdDisplay.textContent = (t.showIdPass && t.roomId) ? t.roomId : 'Not updated yet';
+            elements.roomPasswordDisplay.textContent = (t.showIdPass && t.roomPassword) ? t.roomPassword : 'Not updated yet';
+
+            let slotText = 'Not available';
+            if (t && t.registeredPlayers && currentUser && t.registeredPlayers[currentUser.uid]) {
+                const reg = t.registeredPlayers[currentUser.uid];
+                const rawSlot = reg.slotNumber ?? reg.slot;
+                if (rawSlot !== undefined && rawSlot !== null && rawSlot !== '') {
+                    const num = parseInt(rawSlot, 10);
+                    if (!Number.isNaN(num)) {
+                        slotText = `#${num}`;
+                    }
+                }
+            }
+            if (slotEl) slotEl.textContent = slotText;
+        } else {
+            elements.roomIdDisplay.textContent = 'Not Found';
+            elements.roomPasswordDisplay.textContent = 'Not Found';
+            if (slotEl) slotEl.textContent = 'Not available';
+        }
+    } catch (e) {
+        console.error("ID/Pass fetch error:", e);
+
+        const roomIdBox = elements.roomIdDisplay.closest('.placeholder-glow');
+        const roomPassBox = elements.roomPasswordDisplay.closest('.placeholder-glow');
+        if (roomIdBox) removePlaceholders(roomIdBox);
+        if (roomPassBox) removePlaceholders(roomPassBox);
+        if (slotEl) {
+            const slotBox = slotEl.closest('.placeholder-glow');
+            if (slotBox) removePlaceholders(slotBox);
+            slotEl.textContent = 'Error';
+        }
+
+        elements.roomIdDisplay.textContent = 'Error';
+        elements.roomPasswordDisplay.textContent = 'Error';
+    }
+}
+async function handlePolicyClick(event) { if (!elements.policyModalInstance) return; event.preventDefault(); const policyType = event.currentTarget.dataset.policy; if (!policyType) return; let title = '', modalBodyContent = '<div class="text-center p-5"><div class="spinner-border spinner-border-sm"></div></div>'; elements.policyModalBody.innerHTML = modalBodyContent; switch (policyType) { case 'privacy': title = 'Privacy Policy'; modalBodyContent = appSettings.policyPrivacy || 'Content not available.'; break; case 'terms': title = 'Terms and Conditions'; modalBodyContent = appSettings.policyTerms || 'Content not available.'; break; case 'refund': title = 'Refund and Cancellation'; modalBodyContent = appSettings.policyRefund || 'Content not available.'; break; case 'fairPlay': title = 'Fair Play Policy'; modalBodyContent = appSettings.policyFairPlay || 'Content not available.'; break; 
                     case 'about': title = 'About Us'; modalBodyContent = appSettings.policyAboutUs || 'Content not available.'; break;
                     case 'updates': title = 'Updates'; modalBodyContent = appSettings.policyUpdates || 'Content not available.'; break;
                     case 'partner': title = 'Partner'; modalBodyContent = appSettings.policyPartner || 'Content not available.'; break;
@@ -967,7 +1120,19 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
                  tData = snapshot.val();
                  if (tData.status !== 'upcoming' || (tData.maxPlayers > 0 && (tData.registeredPlayers ? Object.keys(tData.registeredPlayers).length : 0) >= tData.maxPlayers)) throw new Error("Tournament is full or closed.");
 
-                 const registrationData = { joinedAt: serverTimestamp(), username, gameUid, teammates };
+                 let slotNumber = 1;
+    try {
+        const maxPlayers = Number(tData.maxPlayers || 0);
+        const usedSlots = tData.registeredPlayers
+            ? Object.values(tData.registeredPlayers).map(p => parseInt(p.slotNumber, 10)).filter(n => !isNaN(n))
+            : [];
+        if (maxPlayers > 0) {
+            for (let i = 1; i <= maxPlayers; i++) {
+                if (!usedSlots.includes(i)) { slotNumber = i; break; }
+            }
+        }
+    } catch(e){ slotNumber = 1; }
+    const registrationData = { joinedAt: serverTimestamp(), username, gameUid, teammates, slotNumber };
                  await update(ref(db), { [`tournaments/${tId}/registeredPlayers/${currentUser.uid}`]: registrationData });
                  
                  // MATCH JOIN TRANSACTION HISTORY FIX
@@ -1152,6 +1317,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
                             elements.detailsScheduleEl && (elements.detailsScheduleEl.textContent = t.startTime ? formatFullDateTime(t.startTime) : '');
                             elements.detailsPrizePoolEl && (elements.detailsPrizePoolEl.textContent = t.prizePool ? `₹${t.prizePool}` : '-');
                             elements.detailsPerKillEl && (elements.detailsPerKillEl.textContent = t.perKill ? `₹${t.perKill}` : '-');
+                            updateDetailsSlotBox(t);
                             elements.detailsRulesEl && (elements.detailsRulesEl.textContent = t.rules || '');
                             showSection && showSection('match-details-section', { title: t.name || 'Match Details' });
                         } catch(err) {
@@ -1612,7 +1778,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 // ===== /NEWS: client-side paging =====
 
 
-/* --- INLINE SCRIPT #3 (original attrs: ) --- */
 
 (function(){
   function safeAudio(id){
@@ -1631,7 +1796,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #4 (original attrs: ) --- */
 
 (function(){
   // Section switcher fallback (if project doesn't already have one)
@@ -1710,7 +1874,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #5 (original attrs: ) --- */
 
 // v6: ensure dark skin persists after navigation / re-render
 (function(){
@@ -1748,7 +1911,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #6 (original attrs: ) --- */
 
 // v8: clicking the header logo opens Wallet section
 (function(){
@@ -1773,7 +1935,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #7 (original attrs: ) --- */
 
 // v13: username click opens profile and focuses name editor
 (function(){
@@ -1801,7 +1962,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #8 (original attrs: ) --- */
 
 // v14: Click on username => open "Change Your Name" modal directly
 (function(){
@@ -1845,7 +2005,6 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 
 
-/* --- INLINE SCRIPT #9 (original attrs: ) --- */
 
 // v15: Notifications switch logic (localStorage + browser permission)
 (function(){
@@ -1910,3 +2069,61 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   const mo = new MutationObserver(() => bind());
   mo.observe(document.body, { childList: true, subtree: true });
 })();
+
+
+
+// Simple dropdown for Joined Players on match details page
+document.addEventListener('DOMContentLoaded', function(){
+  const toggleBtn = document.getElementById('joinedPlayersToggleBtn');
+  const body = document.getElementById('joinedPlayersBody');
+  const arrow = document.getElementById('joinedPlayersArrow');
+  if(!toggleBtn || !body) return;
+  // ensure hidden by default
+  body.style.display = 'none';
+  toggleBtn.addEventListener('click', function(){
+    const isHidden = body.style.display === 'none' || body.style.display === '';
+    body.style.display = isHidden ? 'block' : 'none';
+    if(arrow){ arrow.textContent = isHidden ? '▲' : '▼'; }
+  });
+});
+// ===== Added by assistant: ensure Mobile Number field exists under signup email =====
+(function ensureSignupMobileField() {
+    try {
+        var emailInput = document.getElementById('signupEmailInputEl');
+        if (!emailInput) return;
+        if (document.getElementById('signupMobileInputEl')) return;
+        var emailGroup = emailInput.closest('.mb-3') || emailInput.parentElement;
+        if (!emailGroup || !emailGroup.parentElement) return;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'mb-3';
+        wrapper.innerHTML = '\n                                <label for="signupMobileInputEl" class="form-label">Mobile Number</label>\n                                <input type="tel" class="form-control" id="signupMobileInputEl" placeholder="Enter mobile number">\n                            ';
+        emailGroup.parentElement.insertBefore(wrapper, emailGroup.nextSibling);
+    } catch (e) {
+        console.error('Failed to inject mobile field in signup form:', e);
+    }
+})();
+// ===== End added by assistant =====
+
+
+
+// ===== Added by assistant: default to SIGNUP form on initial load =====
+document.addEventListener('DOMContentLoaded', function () {
+    try {
+        if (typeof toggleAuthForm === 'function') {
+            // false => show signup, true => show login
+            toggleAuthForm(false);
+        }
+    } catch (e) {
+        console.error('Failed to force signup as default:', e);
+    }
+});
+// ===== End added by assistant =====
+
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof toggleAuthForm === 'function') {
+        toggleAuthForm(false); // show signup
+    }
+});
