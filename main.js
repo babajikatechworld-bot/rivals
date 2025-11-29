@@ -1,16 +1,4 @@
-
-// Simple sanitizeHTML utility to prevent basic HTML injection in inserted content.
-function sanitizeHTML(input) {
-    if (input === undefined || input === null) return '';
-    var s = String(input);
-    var div = document.createElement('div');
-    div.textContent = s;
-    return div.innerHTML;
-}
-
-
-
-        // Firebase Imports
+// Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getDatabase, ref, get, set, update, push, query, orderByChild, equalTo, onValue, runTransaction, off, limitToLast, serverTimestamp, limitToFirst, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
         
@@ -245,7 +233,7 @@ function sanitizeHTML(input) {
             }
 
             document.body.classList.toggle('login-active', sectionId === 'login-section');
-            if(sectionId === 'login-section') toggleAuthForm(true);
+            if(sectionId === 'login-section') toggleAuthForm(false);
 
             updateHeaderForSection(sectionId, options);
              elements.bottomNavItems.forEach(item => {
@@ -428,15 +416,23 @@ function sanitizeHTML(input) {
             const nameEl = elements.signupNameInput;
             const emailEl = elements.signupEmailInput;
             const passwordEl = elements.signupPasswordInput;
+            const mobileEl = document.getElementById('signupMobileInputEl');
             const statusEl = elements.signupStatusMessage;
-        
+
             clearStatusMessage(statusEl);
-        
+
             if (!nameEl.value.trim()) return showStatusMessage(statusEl, 'Please enter your name.', 'warning');
             if (!emailEl.value.trim()) return showStatusMessage(statusEl, 'Please enter your email.', 'warning');
+
+            const rawMobile = mobileEl ? mobileEl.value.trim() : '';
+            if (!rawMobile) return showStatusMessage(statusEl, 'Please enter your mobile number.', 'warning');
+            const digitsOnly = rawMobile.replace(/\D/g, '');
+            if (digitsOnly.length !== 10) return showStatusMessage(statusEl, 'Enter a valid mobile number', 'warning');
+            if (mobileEl) mobileEl.value = digitsOnly;
+
             if (!passwordEl.value) return showStatusMessage(statusEl, 'Please create a password.', 'warning');
             if (passwordEl.value.length < 6) return showStatusMessage(statusEl, 'Password must be at least 6 characters.', 'warning');
-        
+
             toggleButtonLoader(elements.signupEmailBtn, true, 'Signing Up...');
             try {
                 tempReferralCode = elements.signupReferralCodeInput.value.trim();
@@ -1776,354 +1772,3 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   }, 600);
 })();
 // ===== /NEWS: client-side paging =====
-
-
-
-(function(){
-  function safeAudio(id){
-    try{
-      var el=document.getElementById(id);
-      if(el){
-        fetch(el.src,{method:'HEAD'}).then(function(r){
-          if(!r.ok){ el.removeAttribute('src'); }
-        }).catch(function(){ el.removeAttribute('src'); });
-      }
-    }catch(e){}
-  }
-  // try to guard known audio elements if present
-  safeAudio('bgMusic');
-  safeAudio('clickSound');
-})();
-
-
-
-(function(){
-  // Section switcher fallback (if project doesn't already have one)
-  if (typeof window.showSection !== 'function') {
-    window.showSection = function(id){
-      document.querySelectorAll('.section').forEach(s=> s.style.display='none');
-      var el = document.getElementById(id); if (el) el.style.display='block';
-      document.querySelectorAll('.bottom-nav .nav-item').forEach(n=> n.classList.remove('active'));
-      var btn = document.querySelector('.bottom-nav .nav-item[data-section="'+id+'"]');
-      if (btn) btn.classList.add('active');
-    };
-  }
-
-  // Click to open News
-  const newsBtn = document.getElementById('navNewsBtn');
-  if (newsBtn) {
-    newsBtn.addEventListener('click', function(){
-      showSection('news-section');
-      __loadNewsOnce();
-    });
-  }
-
-  // Realtime news loader (runs once, keeps subscribed)
-  let __newsBound = false;
-  function __getDb(){
-    try { if (typeof db !== 'undefined' && db) return db; } catch(e){}
-    try {
-      if (typeof getApps==='function' && getApps().length) {
-        const a = (typeof getApp==='function') ? getApp() : null;
-        if (a && typeof getDatabase==='function') return getDatabase(a);
-      }
-    } catch(e){}
-    try { if (typeof getDatabase==='function') return getDatabase(); } catch(e){}
-    return null;
-  }
-
-  function __loadNewsOnce(){
-    if (__newsBound) return;
-    const d = __getDb();
-    if (!d) { console.warn('News: DB not ready'); return; }
-    __newsBound = true;
-    const listEl = document.getElementById('newsListEl');
-    const emptyEl = document.getElementById('newsEmptyEl');
-    const nref = ref(d, 'news');
-    onValue(nref, function(snap){
-      const items = [];
-      snap.forEach(function(ch){ const v = ch.val() || {}; v.id = ch.key; items.push(v); });
-      items.sort(function(a,b){ return ((b.createdAt||b.timestamp||0) - (a.createdAt||a.timestamp||0)); });
-      listEl.innerHTML='';
-      if (!items.length){ emptyEl.style.display='block'; return; }
-      emptyEl.style.display='none';
-      items.forEach(function(n){
-        const title = n.title || n.tittle || '';
-        const when = n.createdAt || n.timestamp || 0;
-        const img = n.imageUrl ? ('<img loading="lazy" decoding="async" fetchpriority="low" src="'+n.imageUrl+'" class="card-img-top" style="height:160px;object-fit:cover;border-radius:8px 8px 0 0;">') : '';
-        const card = document.createElement('div');
-        card.className = 'col-12';
-        card.innerHTML = '<div class="custom-card p-0">'+
-            img+
-            '<div class="p-3">'+
-              (title ? '<h5 class="mb-2">'+title+'</h5>' : '')+
-              (n.content ? '<p class="mb-2" style="white-space:pre-wrap">'+(n.content||'')+'</p>' : '')+
-              '<div class="text-secondary small">'+ (when ? new Date(when).toLocaleString() : '') +'</div>'+
-            '</div>'+
-          '</div>';
-        listEl.appendChild(card);
-      });
-    });
-  }
-
-  // If user deep-links to #news
-  if (location.hash === '#news') {
-    showSection('news-section');
-    __loadNewsOnce();
-  }
-})();
-
-
-
-// v6: ensure dark skin persists after navigation / re-render
-(function(){
-  function applyNewsSkin(){
-    var cards = document.querySelectorAll('#news-section .custom-card');
-    cards.forEach(function(el){
-      el.style.background = '#121212';
-      el.style.color = '#e5e7eb';
-      el.style.border = '1px solid rgba(255,255,255,0.08)';
-      el.style.borderRadius = '16px';
-      el.style.boxShadow = '0 2px 10px rgba(0,0,0,0.35)';
-    });
-  }
-  // Run when DOM updates
-  const newsSec = document.getElementById('news-section');
-  if (newsSec) {
-    const mo = new MutationObserver(function(){ applyNewsSkin(); });
-    mo.observe(newsSec, { childList:true, subtree:true });
-    // initial
-    applyNewsSkin();
-  }
-  // Patch showSection to call skinner when news is shown
-  if (typeof window.showSection === 'function' && !window.__SHOWSECTION_PATCHED_V6){
-    window.__SHOWSECTION_PATCHED_V6 = true;
-    const __orig = window.showSection;
-    window.showSection = function(id){
-      try { return __orig.apply(this, arguments); }
-      finally { if (id === 'news-section') { setTimeout(applyNewsSkin, 0); } }
-    };
-  }
-  // Also listen to nav button
-  document.getElementById('navNewsBtn')?.addEventListener('click', function(){ setTimeout(applyNewsSkin, 0); });
-  // Expose for manual trigger if needed
-  window.__applyNewsSkin = applyNewsSkin;
-})();
-
-
-
-// v8: clicking the header logo opens Wallet section
-(function(){
-  var logo = document.getElementById('appLogoEl');
-  function openWallet(){ 
-    if (typeof showSection === 'function') { showSection('wallet-section'); }
-    else { window.location.hash = '#wallet-section'; }
-  }
-  if (logo && !logo.__walletBound){ 
-    logo.__walletBound = true; 
-    logo.addEventListener('click', openWallet);
-  }
-  // also if header is rendered later, re-bind on DOM changes
-  var hdr = document.body;
-  if (hdr && !window.__walletMo){
-    window.__walletMo = new MutationObserver(function(){
-      var l = document.getElementById('appLogoEl');
-      if (l && !l.__walletBound){ l.__walletBound = true; l.style.cursor='pointer'; l.addEventListener('click', openWallet); }
-    });
-    window.__walletMo.observe(hdr, { childList:true, subtree:true });
-  }
-})();
-
-
-
-// v13: username click opens profile and focuses name editor
-(function(){
-  function bindUserNameClick(){
-    var el = document.getElementById('headerUserGreetingEl');
-    if(!el || el.__v13Bound) return;
-    el.__v13Bound = true;
-    el.addEventListener('click', function(){
-      try{
-        if(typeof showSection === 'function'){ showSection('profile-section'); }
-        // focus after section shows
-        setTimeout(function(){
-          var input = document.getElementById('editNameInput') 
-                   || document.getElementById('profileNameInput') 
-                   || document.querySelector('#profile-section input[type="text"]');
-          if(input){ input.focus(); input.select && input.select(); }
-        }, 200);
-      }catch(e){ console.warn('v13 username click err', e); }
-    });
-  }
-  // initial and after mutations
-  bindUserNameClick();
-  var mo = new MutationObserver(bindUserNameClick);
-  mo.observe(document.body, {childList:true, subtree:true});
-})();
-
-
-
-// v14: Click on username => open "Change Your Name" modal directly
-(function(){
-  function ensureBootstrapModal(){
-    // bootstrap 5 expected on window.bootstrap
-    if (window.bootstrap && typeof window.bootstrap.Modal === 'function') return true;
-    return false;
-  }
-  function openEditNameModal(){
-    var mEl = document.getElementById('editNameModal');
-    if(!mEl){ console.warn('editNameModal not found'); return; }
-    if (ensureBootstrapModal()){
-      try{
-        var modal = window.__editNameModalInstance || (window.__editNameModalInstance = new bootstrap.Modal(mEl, {backdrop:true}));
-        modal.show();
-      }catch(e){ console.warn('Bootstrap modal show error', e); mEl.style.display='block'; }
-    } else {
-      // fallback: simple display
-      mEl.style.display='block';
-      mEl.classList.add('show');
-    }
-    setTimeout(function(){
-      var input = document.getElementById('editNameInput');
-      if(input){ input.focus(); input.select && input.select(); }
-    }, 200);
-  }
-  function bind(){
-    var nameEl = document.getElementById('headerUserGreetingEl');
-    if(nameEl && !nameEl.__nameModalBound){
-      nameEl.__nameModalBound = true;
-      nameEl.style.cursor = 'pointer';
-      nameEl.addEventListener('click', function(e){
-        e.preventDefault();
-        openEditNameModal();
-      });
-    }
-  }
-  bind();
-  var mo = new MutationObserver(bind);
-  mo.observe(document.body, {childList:true, subtree:true});
-})();
-
-
-
-// v15: Notifications switch logic (localStorage + browser permission)
-(function(){
-  const SWITCH_ID = 'notificationSwitchEl';
-  const STORAGE_KEY = 'notifEnabled';
-  function $(id){ return document.getElementById(id); }
-
-  function initSwitchState(){
-    const sw = $(SWITCH_ID);
-    if(!sw) return;
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved !== null){
-      sw.checked = saved === '1';
-    } else {
-      // default on if markup had checked
-      localStorage.setItem(STORAGE_KEY, sw.checked ? '1' : '0');
-    }
-  }
-
-  async function handleToggle(e){
-    const sw = e.currentTarget;
-    if(sw.checked){
-      // Request notification permission
-      try{
-        if (!('Notification' in window)){
-          alert('Notifications are not supported in this browser.');
-          sw.checked = false;
-          localStorage.setItem(STORAGE_KEY, '0');
-          return;
-        }
-        const perm = await Notification.requestPermission();
-        if(perm === 'granted'){
-          localStorage.setItem(STORAGE_KEY, '1');
-          // Optional: show a sample notification
-          try{ new Notification('Notifications enabled', { body: 'You will receive alerts here.' }); }catch(_){}
-        } else {
-          sw.checked = false;
-          localStorage.setItem(STORAGE_KEY, '0');
-          alert('Permission denied. Notifications remain off.');
-        }
-      }catch(err){
-        console.warn('Notification perm error', err);
-        sw.checked = false;
-        localStorage.setItem(STORAGE_KEY, '0');
-      }
-    } else {
-      localStorage.setItem(STORAGE_KEY, '0');
-    }
-  }
-
-  function bind(){
-    const sw = $(SWITCH_ID);
-    if(!sw || sw.__boundV15) return;
-    sw.__boundV15 = true;
-    sw.addEventListener('change', handleToggle);
-  }
-
-  // init
-  initSwitchState();
-  bind();
-  // re-bind if DOM changes
-  const mo = new MutationObserver(() => bind());
-  mo.observe(document.body, { childList: true, subtree: true });
-})();
-
-
-
-// Simple dropdown for Joined Players on match details page
-document.addEventListener('DOMContentLoaded', function(){
-  const toggleBtn = document.getElementById('joinedPlayersToggleBtn');
-  const body = document.getElementById('joinedPlayersBody');
-  const arrow = document.getElementById('joinedPlayersArrow');
-  if(!toggleBtn || !body) return;
-  // ensure hidden by default
-  body.style.display = 'none';
-  toggleBtn.addEventListener('click', function(){
-    const isHidden = body.style.display === 'none' || body.style.display === '';
-    body.style.display = isHidden ? 'block' : 'none';
-    if(arrow){ arrow.textContent = isHidden ? '▲' : '▼'; }
-  });
-});
-// ===== Added by assistant: ensure Mobile Number field exists under signup email =====
-(function ensureSignupMobileField() {
-    try {
-        var emailInput = document.getElementById('signupEmailInputEl');
-        if (!emailInput) return;
-        if (document.getElementById('signupMobileInputEl')) return;
-        var emailGroup = emailInput.closest('.mb-3') || emailInput.parentElement;
-        if (!emailGroup || !emailGroup.parentElement) return;
-        var wrapper = document.createElement('div');
-        wrapper.className = 'mb-3';
-        wrapper.innerHTML = '\n                                <label for="signupMobileInputEl" class="form-label">Mobile Number</label>\n                                <input type="tel" class="form-control" id="signupMobileInputEl" placeholder="Enter mobile number">\n                            ';
-        emailGroup.parentElement.insertBefore(wrapper, emailGroup.nextSibling);
-    } catch (e) {
-        console.error('Failed to inject mobile field in signup form:', e);
-    }
-})();
-// ===== End added by assistant =====
-
-
-
-// ===== Added by assistant: default to SIGNUP form on initial load =====
-document.addEventListener('DOMContentLoaded', function () {
-    try {
-        if (typeof toggleAuthForm === 'function') {
-            // false => show signup, true => show login
-            toggleAuthForm(false);
-        }
-    } catch (e) {
-        console.error('Failed to force signup as default:', e);
-    }
-});
-// ===== End added by assistant =====
-
-
-
-
-document.addEventListener('DOMContentLoaded', function () {
-    if (typeof toggleAuthForm === 'function') {
-        toggleAuthForm(false); // show signup
-    }
-});
