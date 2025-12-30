@@ -1,5 +1,3 @@
-// main.js - extracted from index_updated (2).html
-
 // Simple sanitizeHTML utility to prevent basic HTML injection in inserted content.
 function sanitizeHTML(input) {
     if (input === undefined || input === null) return '';
@@ -9,9 +7,9 @@ function sanitizeHTML(input) {
     return div.innerHTML;
 }
 
-// ========== NEXT SCRIPT ==========
 
-// Firebase Imports
+
+        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getDatabase, ref, get, set, update, push, query, orderByChild, equalTo, onValue, runTransaction, off, limitToLast, serverTimestamp, limitToFirst, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
         
@@ -1830,7 +1828,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
 })();
 // ===== /NEWS: client-side paging =====
 
-// ========== NEXT SCRIPT ==========
+
 
 (function(){
   function safeAudio(id){
@@ -1848,7 +1846,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   safeAudio('clickSound');
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 (function(){
   // Section switcher fallback (if project doesn't already have one)
@@ -1926,7 +1924,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   }
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // v6: ensure dark skin persists after navigation / re-render
 (function(){
@@ -1963,7 +1961,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   window.__applyNewsSkin = applyNewsSkin;
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // v8: clicking the header logo opens Wallet section
 (function(){
@@ -1987,7 +1985,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   }
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // v13: username click opens profile and focuses name editor
 (function(){
@@ -2014,7 +2012,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   mo.observe(document.body, {childList:true, subtree:true});
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // v14: Click on username => open "Change Your Name" modal directly
 (function(){
@@ -2057,7 +2055,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   mo.observe(document.body, {childList:true, subtree:true});
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // v15: Notifications switch logic (localStorage + browser permission)
 (function(){
@@ -2123,7 +2121,7 @@ case 'refer': title = 'Refer & Earn'; if (!currentUser) { alert("Login to view r
   mo.observe(document.body, { childList: true, subtree: true });
 })();
 
-// ========== NEXT SCRIPT ==========
+
 
 // Dropdown toggles for Joined Players & Results on match details page
 document.addEventListener('DOMContentLoaded', function(){
@@ -2186,10 +2184,209 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 // ===== End added by assistant =====
 
-// ========== NEXT SCRIPT ==========
+
+
 
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof toggleAuthForm === 'function') {
         toggleAuthForm(false); // show signup
     }
 });
+
+
+
+(function(){
+  var btn = document.getElementById("floatingLiveSupport");
+  var badge = document.getElementById("supportBadge");
+  var isDragging=false, ox=0, oy=0;
+
+  function sync(){
+    var home=document.getElementById("home-section");
+    btn.style.display=(home && home.classList.contains("active"))?"flex":"none";
+  }
+  setInterval(sync,300);
+
+  /* drag */
+  btn.addEventListener("touchstart",function(e){
+    if(e.touches.length!==1) return;
+    isDragging=true;
+    var r=btn.getBoundingClientRect();
+    ox=e.touches[0].clientX-r.left;
+    oy=e.touches[0].clientY-r.top;
+  },{passive:true});
+
+  btn.addEventListener("touchmove",function(e){
+    if(!isDragging) return;
+    btn.style.left=(e.touches[0].clientX-ox)+'px';
+    btn.style.top=(e.touches[0].clientY-oy)+'px';
+    btn.style.right='auto';
+    btn.style.bottom='auto';
+  },{passive:true});
+
+  btn.addEventListener("touchend",()=>setTimeout(()=>isDragging=false,50));
+
+  btn.addEventListener("mousedown",e=>{
+    isDragging=true;
+    var r=btn.getBoundingClientRect();
+    ox=e.clientX-r.left;
+    oy=e.clientY-r.top;
+  });
+  document.addEventListener("mousemove",e=>{
+    if(!isDragging) return;
+    btn.style.left=(e.clientX-ox)+'px';
+    btn.style.top=(e.clientY-oy)+'px';
+    btn.style.right='auto';
+    btn.style.bottom='auto';
+  });
+  document.addEventListener("mouseup",()=>isDragging=false);
+
+  function openSupport(){
+    badge.style.display="none";
+    var menuBtn=document.querySelector('[data-section="live-support-section"], #liveSupportBtn, .live-support-btn');
+    if(menuBtn) menuBtn.click();
+  }
+
+  btn.addEventListener("click",()=>{ if(!isDragging) openSupport(); });
+  btn.addEventListener("touchend",()=>{ if(!isDragging) openSupport(); });
+
+  window.notifyLiveSupportUnread=function(count=1){
+    badge.textContent=count;
+    badge.style.display="flex";
+  };
+})();
+
+
+
+document.addEventListener("DOMContentLoaded", function(){
+  const liveTitle = document.querySelector("#live-support-section .section-title");
+  if(liveTitle && !liveTitle.querySelector(".ls-icon")){
+    const icon = document.createElement("i");
+    icon.className = "bi bi-chat-quote-fill ls-icon";
+    liveTitle.prepend(icon);
+  }
+});
+
+
+
+/* ensure badge shows when admin sends message */
+(function(){
+  const badge = document.getElementById("supportBadge") || document.querySelector("#floatingLiveSupport .support-badge");
+
+  if(!badge) return;
+
+  // override / reinforce global notifier
+  window.notifyLiveSupportUnread = function(count=1){
+    badge.textContent = count;
+    badge.style.display = "flex";
+  };
+
+  // clear badge when live support opened
+  document.addEventListener("click", function(e){
+    if(e.target.closest("#floatingLiveSupport")){
+      badge.style.display = "none";
+    }
+  });
+})();
+
+
+
+(function(){
+  const badge = document.getElementById("supportBadge");
+  if(!badge) return;
+
+  let unread = 0;
+  let liveOpen = false;
+
+  // detect when live support section is active
+  const observerSection = new MutationObserver(() => {
+    const sec = document.getElementById("live-support-section");
+    liveOpen = sec && sec.classList.contains("active");
+    if(liveOpen){
+      unread = 0;
+      badge.style.display = "none";
+    }
+  });
+  observerSection.observe(document.body, {subtree:true, attributes:true, attributeFilter:["class"]});
+
+  // observe chat container for new admin messages
+  const chatBox = document.querySelector("#live-support-section");
+  if(!chatBox) return;
+
+  const observerChat = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if(!(node instanceof HTMLElement)) return;
+
+        // detect admin/support message
+        if(node.textContent && node.textContent.toLowerCase().includes("support")){
+          if(!liveOpen){
+            unread++;
+            badge.textContent = unread;
+            badge.style.display = "flex";
+          }
+        }
+      });
+    });
+  });
+
+  observerChat.observe(chatBox, {childList:true, subtree:true});
+})();
+
+
+
+(function(){
+  const alertBox = document.getElementById("topNotificationAlert");
+  const alertText = document.getElementById("topAlertText");
+
+  function showTopAlert(message){
+    alertText.textContent = message;
+    alertBox.classList.add("show");
+    setTimeout(()=>alertBox.classList.remove("show"), 4500);
+  }
+
+  // 🔔 Firebase notification listener (same logic as notification bubble)
+  if(window.firebase && firebase.auth){
+    firebase.auth().onAuthStateChanged(user => {
+      if(!user) return;
+      firebase.database()
+        .ref("notifications/" + user.uid)
+        .limitToLast(1)
+        .on("child_added", snap => {
+          const data = snap.val();
+          if(data && data.read === false){
+            showTopAlert(data.message || "You have a new notification");
+          }
+        });
+    });
+  }
+})();
+
+
+
+(function(){
+  const alertBox = document.getElementById("topNotifyAlert");
+
+  function showAlert(){
+    alertBox.classList.add("show");
+    setTimeout(()=>alertBox.classList.remove("show"), 4000);
+  }
+
+  /* 🔔 Hook existing notification icon badge */
+  const notifIcon = document.getElementById("notificationBtnEl");
+  if(!notifIcon) return;
+
+  const badge = notifIcon.querySelector(".notification-badge");
+  if(!badge) return;
+
+  let last = badge.textContent;
+
+  const observer = new MutationObserver(() => {
+    const curr = badge.textContent;
+    if(curr !== last && parseInt(curr) > 0){
+      showAlert();
+      last = curr;
+    }
+  });
+
+  observer.observe(badge, {childList:true, subtree:true});
+})();
