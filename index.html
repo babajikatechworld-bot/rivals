@@ -4350,14 +4350,61 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<!-- ================= LEADERBOARD SECTION ================= -->
+<section id="leaderboard-section" style="display:none;padding:20px;">
+  <h2 style="color:#f5c542;">Top Players</h2>
+  <div id="leaderboardList" style="margin-top:10px;"></div>
+</section>
+
 <script>
-// --- FIX: define missing handler to prevent app crash ---
-if (typeof window.handleWithdrawalClick !== 'function') {
-  window.handleWithdrawalClick = function(id){
-    console.log('handleWithdrawalClick called for', id);
-    alert('Withdrawal action is not configured yet.');
+// ================= LEADERBOARD LOADER =================
+async function loadLeaderboardData(){
+  try{
+    const listEl = document.getElementById("leaderboardList");
+    if(!listEl) return;
+    listEl.innerHTML = "Loading leaderboard...";
+    const snapshot = await get(ref(db, "users"));
+    if(!snapshot.exists()){
+      listEl.innerHTML = "Leaderboard is empty.";
+      return;
+    }
+    const users = [];
+    snapshot.forEach(child => {
+      const u = child.val() || {};
+      if(typeof u.leaderboardRank === "number"){
+        users.push({
+          name: u.username || u.displayName || child.key,
+          cash: u.winningCash || 0,
+          rank: u.leaderboardRank
+        });
+      }
+    });
+    users.sort((a,b)=>a.rank-b.rank);
+    if(!users.length){
+      listEl.innerHTML = "Leaderboard is empty.";
+      return;
+    }
+    listEl.innerHTML = "";
+    users.forEach(u=>{
+      const row = document.createElement("div");
+      row.style.padding = "8px 0";
+      row.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
+      row.textContent = `#${u.rank} ${u.name} — ₹${u.cash}`;
+      listEl.appendChild(row);
+    });
+  }catch(e){
+    console.error("Leaderboard load failed:", e);
   }
 }
+
+// Hook into section switcher if exists
+document.addEventListener("click", function(e){
+  const link = e.target.closest("[data-section]");
+  if(!link) return;
+  if(link.dataset.section === "leaderboard-section"){
+    setTimeout(loadLeaderboardData, 300);
+  }
+});
 </script>
 
 </body>
