@@ -3005,7 +3005,110 @@ async function showMatchDetailsPage(tId){
         function loadWalletData() { if (currentUser) loadRecentTransactions(); }
         function loadProfileData() { /* Profile data is real-time */ }
         
-        
+        async function loadLeaderboardData() {
+            if (!currentUser) return;
+            const listEl = elements.leaderboardListEl, emptyMsgEl = elements.noLeaderboardMessageEl;
+            listEl.innerHTML = `<div class="leaderboard-item placeholder-glow mb-2"><span class="placeholder col-1" style="height: 30px; width: 35px;"></span><span class="placeholder col-2 ms-2 me-3" style="height: 45px; width: 45px; border-radius: 50%;"></span><div style="flex-grow: 1;"><span class="placeholder col-6 d-block" style="height: 20px;"></span></div><span class="placeholder col-3" style="height: 20px;"></span></div>`.repeat(5);
+            emptyMsgEl.style.display = 'none';
+
+            try {
+                const leaderboardQuery = query(ref(db, 'users'), orderByChild('leaderboardRank'), limitToFirst(100));
+                const snapshot = await get(leaderboardQuery);
+                removePlaceholders(listEl);
+                listEl.innerHTML = '';
+                if (!snapshot.exists()) { emptyMsgEl.style.display = 'block'; return; }
+                const leaderboardData = [];
+                snapshot.forEach(childSnapshot => { const user = childSnapshot.val(); if (user && user.leaderboardRank) leaderboardData.push(user); });
+                leaderboardData.sort((a, b) => a.leaderboardRank - b.leaderboardRank);
+                if (leaderboardData.length === 0) { emptyMsgEl.style.display = 'block'; return; }
+                leaderboardData.forEach(user => {
+                    const displayName = user.displayName || user.email?.split('@')[0] || 'User';
+                    const photoURL = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1E293B&color=E2E8F0&bold=true&size=45`;
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'leaderboard-item';
+                    itemEl.innerHTML = `<div class="leaderboard-rank">#${user.leaderboardRank}</div><img loading="lazy" decoding="async" fetchpriority="low" src="${photoURL}" alt="${displayName}" class="leaderboard-avatar"><div class="leaderboard-user-info"><div class="leaderboard-name">${displayName}</div></div><div class="leaderboard-earnings">₹${(user.leaderboardDisplayEarnings || 0).toLocaleString('en-IN')}</div>`;
+                    listEl.appendChild(itemEl);
+                });
+            } catch(error) {
+                 console.error("Error loading leaderboard:", error);
+                 listEl.innerHTML = `<p class="text-center text-danger">Could not load leaderboard. ${error.message}</p>`;
+            }
+        }
+
+        async function recordTransaction(userId, type, amount, description, details = {}) { if (!userId) return; const transactionRef = ref(db, `transactions/${userId}`); const newTransaction = { type, amount, description, timestamp: serverTimestamp(), ...details }; try { await push(transactionRef, newTransaction); } catch (e) { console.error("Transaction record failed:", e); } }
+        async function loadRecentTransactions() { if (!currentUser || !elements.recentTransactionsList) return; const limit = 5; elements.recentTransactionsList.innerHTML = ''; elements.recentTransactionsList.classList.add('placeholder-glow'); for (let i = 0; i < 3; i++) elements.recentTransactionsList.innerHTML += `<div class="custom-card p-2 mb-2 placeholder-glow"><div class="d-flex justify-content-between"><span class="placeholder col-5 h-16"></span><span class="placeholder col-3 h-16"></span></div><div class="small text-secondary mt-1"><span class="placeholder col-6 h-14"></span></div></div>`; if (elements.noTransactionsMessage) { elements.noTransactionsMessage.style.display = 'block'; elements.noTransactionsMessage.textContent = 'Loading transactions...'; } try { const transRef = query(ref(db, `transactions/${currentUser.uid}`), limitToLast(limit)); const s = await get(transRef); const transactions = s.val() || {}; const sortedT = Object.values(transactions).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); removePlaceholders(elements.recentTransactionsList); elements.recentTransactionsList.innerHTML = ''; if (sortedT.length > 0) { if (elements.noTransactionsMessage) elements.noTransactionsMessage.style.display = 'none'; sortedT.forEach(t => { const item = document.createElement('div'); item.className = 'custom-card p-2 mb-2 d-flex justify-content-between align-items-center'; const isCr = t.amount > 0; const amt = `${isCr ? '+' : ''}<span class="currency-symbol">₹</span>${Math.abs(t.amount || 0).toFixed(2)}`; const time = t.timestamp ? new Date(t.timestamp).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'; item.innerHTML = `<div><div class="small fw-bold">${t.description || t.type || 'Txn'}</div><div class="small text-secondary">${time}</div></div><div class="fw-bold ${isCr ? 'text-success' : 'text-danger'}">${amt}</div>`; elements.recentTransactionsList.appendChild(item); }); } else if (elements.noTransactionsMessage) { elements.noTransactionsMessage.style.display = 'block'; elements.noTransactionsMessage.textContent = 'No recent transactions.'; } } catch (e) { console.error("Transactions load failed:", e); removePlaceholders(elements.recentTransactionsList); elements.recentTransactionsList.innerHTML = '<p class="text-danger tc">Could not load transactions.</p>'; if (elements.noTransactionsMessage) elements.noTransactionsMessage.style.display = 'none'; } }
+        function handleWithdrawClick() { if (!currentUser || !elements.withdrawModalInstance) return; const wc = userProfile.winningCash || 0; const minW = appSettings?.minWithdraw || 50; elements.minWithdrawAmount.textContent = minW; elements.withdrawModalBalance.textContent = `₹${wc.toFixed(2)}`; elements.withdrawAmountInput.value = ''; elements.withdrawAmountInput.min = minW; elements.withdrawMethodInput.value = userProfile.upiId || ''; clearStatusMessage(elements.withdrawStatusMessage); elements.withdrawModalInstance.show(); }
+        async function submitWithdrawRequestHandler() { if (!currentUser || !elements.withdrawModalInstance) return; const amt = parseFloat(elements.withdrawAmountInput.value); const mtd = elements.withdrawMethodInput.value.trim(); const wc = userProfile.winningCash || 0; const minW = appSettings?.minWithdraw || 50; clearStatusMessage(elements.withdrawStatusMessage); if (isNaN(amt) || amt <= 0) { showStatusMessage(elements.withdrawStatusMessage, 'Invalid amount.', 'warning'); return; } if (amt < minW) { showStatusMessage(elements.withdrawStatusMessage, `Min withdraw ₹${minW}.`, 'warning'); return; } if (amt > wc) { showStatusMessage(elements.withdrawStatusMessage, 'Insufficient winning balance.', 'warning'); return; } if (!mtd) { showStatusMessage(elements.withdrawStatusMessage, 'Enter withdrawal method.', 'warning'); return; } elements.submitWithdrawRequestBtn.disabled = true; elements.submitWithdrawRequestBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...'; let transactionCommitted = false; try { const uRef = ref(db, `users/${currentUser.uid}`); const txResult = await runTransaction(uRef, (prof) => { if (prof) { if ((prof.winningCash || 0) >= amt) { prof.winningCash = (prof.winningCash || 0) - amt; return prof; } else { throw new Error("Insufficient winning balance (Tx)."); } } else { throw new Error("Profile missing (Tx)."); } }); if (!txResult.committed) { throw new Error("Failed to update balance. Please try again."); } transactionCommitted = true; const wrRef = ref(db, 'withdrawals'); const newReq = { userId: currentUser.uid, userName: userProfile.displayName || currentUser.email, amount: amt, methodDetails: { methodName: mtd.includes('@') ? 'UPI' : 'Bank/Other', accountInfo: mtd }, status: 'pending', requestTimestamp: serverTimestamp(), userEmail: currentUser.email || 'N/A' }; const newWithdrawalRef = await push(wrRef, newReq); await recordTransaction(currentUser.uid, 'withdraw_request', -amt, `Withdrawal Request to ${mtd}`, { withdrawalId: newWithdrawalRef.key }); showStatusMessage(elements.withdrawStatusMessage, 'Request submitted successfully!', 'success', false); setTimeout(() => { if (elements.withdrawModalInstance) elements.withdrawModalInstance.hide(); }, 2500); if (currentSectionId === 'wallet-section') loadRecentTransactions(); } catch (e) { console.error("Withdraw error:", e); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}`, 'danger'); if (transactionCommitted) { const uRef = ref(db, `users/${currentUser.uid}`); try { await runTransaction(uRef, (prof) => { if (prof) { prof.winningCash = (prof.winningCash || 0) + amt; } return prof; }); await recordTransaction(currentUser.uid, 'withdraw_failed_refund', amt, `Refund Failed Withdrawal Request`); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}. Amount refunded.`, 'danger'); } catch (refundError) { console.error("CRITICAL: FAILED TO REFUND WINNING CASH!", refundError); showStatusMessage(elements.withdrawStatusMessage, `Error: ${e.message}. CRITICAL: Failed to refund amount! Contact support.`, 'danger', false); } } } finally { elements.submitWithdrawRequestBtn.disabled = false; elements.submitWithdrawRequestBtn.innerHTML = 'Submit Request'; } }
+        async function handleIdPasswordClick(event) {
+    if (!elements.idPasswordModalInstance) return;
+    const tId = event.currentTarget.dataset.tournamentId;
+    if (!tId || !currentUser || !userProfile?.joinedTournaments?.[tId]) {
+        alert("Join the tournament first or refresh the page.");
+        return;
+    }
+
+    elements.roomIdDisplay.innerHTML = '<span class="placeholder col-6"></span>';
+    elements.roomPasswordDisplay.innerHTML = '<span class="placeholder col-6"></span>';
+
+    const slotEl = document.getElementById('roomSlotDisplayEl');
+    if (slotEl) {
+        slotEl.innerHTML = '<span class="placeholder col-4"></span>';
+    }
+
+    elements.idPasswordModalInstance.show();
+
+    try {
+        const s = await get(ref(db, `tournaments/${tId}`));
+
+        const roomIdBox = elements.roomIdDisplay.closest('.placeholder-glow');
+        const roomPassBox = elements.roomPasswordDisplay.closest('.placeholder-glow');
+        if (roomIdBox) removePlaceholders(roomIdBox);
+        if (roomPassBox) removePlaceholders(roomPassBox);
+        if (slotEl) {
+            const slotBox = slotEl.closest('.placeholder-glow');
+            if (slotBox) removePlaceholders(slotBox);
+        }
+
+        if (s.exists()) {
+            const t = s.val();
+
+            elements.roomIdDisplay.textContent = (t.showIdPass && t.roomId) ? t.roomId : 'Not updated yet';
+            elements.roomPasswordDisplay.textContent = (t.showIdPass && t.roomPassword) ? t.roomPassword : 'Not updated yet';
+
+            let slotText = 'Not available';
+            if (t && t.registeredPlayers && currentUser && t.registeredPlayers[currentUser.uid]) {
+                const reg = t.registeredPlayers[currentUser.uid];
+                const rawSlot = reg.slotNumber ?? reg.slot;
+                if (rawSlot !== undefined && rawSlot !== null && rawSlot !== '') {
+                    const num = parseInt(rawSlot, 10);
+                    if (!Number.isNaN(num)) {
+                        slotText = `#${num}`;
+                    }
+                }
+            }
+            if (slotEl) slotEl.textContent = slotText;
+        } else {
+            elements.roomIdDisplay.textContent = 'Not Found';
+            elements.roomPasswordDisplay.textContent = 'Not Found';
+            if (slotEl) slotEl.textContent = 'Not available';
+        }
+    } catch (e) {
+        console.error("ID/Pass fetch error:", e);
+
+        const roomIdBox = elements.roomIdDisplay.closest('.placeholder-glow');
+        const roomPassBox = elements.roomPasswordDisplay.closest('.placeholder-glow');
+        if (roomIdBox) removePlaceholders(roomIdBox);
+        if (roomPassBox) removePlaceholders(roomPassBox);
+        if (slotEl) {
+            const slotBox = slotEl.closest('.placeholder-glow');
+            if (slotBox) removePlaceholders(slotBox);
+            slotEl.textContent = 'Error';
+        }
+
+        elements.roomIdDisplay.textContent = 'Error';
+        elements.roomPasswordDisplay.textContent = 'Error';
+    }
+}
 async function handlePolicyClick(event) { if (!elements.policyModalInstance) return; event.preventDefault(); const policyType = event.currentTarget.dataset.policy; if (!policyType) return; let title = '', modalBodyContent = '<div class="text-center p-5"><div class="spinner-border spinner-border-sm"></div></div>'; elements.policyModalBody.innerHTML = modalBodyContent; switch (policyType) { case 'privacy': title = 'Privacy Policy'; modalBodyContent = appSettings.policyPrivacy || 'Content not available.'; break; case 'terms': title = 'Terms and Conditions'; modalBodyContent = appSettings.policyTerms || 'Content not available.'; break; case 'refund': title = 'Refund and Cancellation'; modalBodyContent = appSettings.policyRefund || 'Content not available.'; break; case 'fairPlay': title = 'Fair Play Policy'; modalBodyContent = appSettings.policyFairPlay || 'Content not available.'; break; 
                     case 'about': title = 'About Us'; modalBodyContent = appSettings.policyAboutUs || 'Content not available.'; break;
                     case 'updates': title = 'Updates'; modalBodyContent = appSettings.policyUpdates || 'Content not available.'; break;
@@ -4248,87 +4351,13 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-/* ===========================
-   FINAL LEADERBOARD FIX
-   Works with many users
-   Safe for missing fields
-=========================== */
-
-function sanitizeHTML(str) {
-  return String(str || "").replace(/[&<>"']/g, s => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-  }[s]));
-}
-
-function loadLeaderboardFixed() {
-  const listEl = document.getElementById("leaderboardListEl");
-  const emptyMsgEl = document.getElementById("noLeaderboardMessageEl");
-  if (!listEl) {
-    console.error("leaderboardListEl not found");
-    return;
+// --- FIX: define missing handler to prevent app crash ---
+if (typeof window.handleWithdrawalClick !== 'function') {
+  window.handleWithdrawalClick = function(id){
+    console.log('handleWithdrawalClick called for', id);
+    alert('Withdrawal action is not configured yet.');
   }
-
-  listEl.innerHTML = `
-    <div class="leaderboard-item placeholder-glow">
-      <span class="placeholder col-12 mb-2"></span>
-      <span class="placeholder col-10 mb-2"></span>
-      <span class="placeholder col-8"></span>
-    </div>
-  `.repeat(5);
-
-  firebase.database().ref("users").once("value")
-    .then(snapshot => {
-      listEl.innerHTML = "";
-      if (emptyMsgEl) emptyMsgEl.style.display = "none";
-
-      const users = [];
-      snapshot.forEach(child => {
-        const u = child.val() || {};
-        users.push({
-          uid: child.key,
-          name: u.displayName || u.username || (u.email ? u.email.split("@")[0] : "Player"),
-          winningCash: Number(u.winningCash || 0),
-          avatar: u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username || "P")}&background=1E293B&color=E2E8F0&bold=true&size=45`
-        });
-      });
-
-      users.sort((a, b) => b.winningCash - a.winningCash);
-      const top = users.slice(0, 50);
-
-      if (!top.length) {
-        if (emptyMsgEl) emptyMsgEl.style.display = "block";
-        listEl.innerHTML = `<p class="text-secondary text-center">No leaderboard data found</p>`;
-        return;
-      }
-
-      top.forEach((u, index) => {
-        listEl.innerHTML += `
-          <div class="leaderboard-item">
-            <div class="leaderboard-rank">#${index + 1}</div>
-            <img class="leaderboard-avatar" src="${u.avatar}" />
-            <div class="leaderboard-user-info">
-              <div class="leaderboard-name">${sanitizeHTML(u.name)}</div>
-            </div>
-            <div class="leaderboard-earnings">₹${u.winningCash.toLocaleString('en-IN')}</div>
-          </div>
-        `;
-      });
-    })
-    .catch(err => {
-      console.error("Leaderboard error:", err);
-      listEl.innerHTML = `<p class="text-danger text-center">Failed to load leaderboard</p>`;
-    });
 }
-
-// Auto load when section opens
-document.addEventListener("click", e => {
-  const link = e.target.closest("[data-section]");
-  if (!link) return;
-  if (link.dataset.section === "leaderboard-section") {
-    setTimeout(loadLeaderboardFixed, 300);
-  }
-});
-
 </script>
 
 </body>
