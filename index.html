@@ -1253,13 +1253,6 @@ html, body {
   pointer-events: auto !important;
 }
 </style>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, query, orderByChild, limitToLast, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-</script>
-
 </head>
 
 <body>
@@ -4357,61 +4350,44 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-<!-- ================= LEADERBOARD SECTION ================= -->
-<section id="leaderboard-section" style="display:none;padding:20px;">
-  <h2 style="color:#f5c542;">Top Players</h2>
-  <div id="leaderboardList" style="margin-top:10px;color:#fff;"></div>
-</section>
-
-
+<!-- ================= LEADERBOARD PATCH ================= -->
 <script>
-async function loadLeaderboard() {
-  const list = document.getElementById("leaderboardList");
-  if (!list || typeof db === "undefined") return;
-
-  list.innerHTML = "Loading leaderboard...";
-
-  try {
-    const q = query(ref(db, "users"), orderByChild("winningCash"), limitToLast(20));
-    const snap = await get(q);
-
-    if (!snap.exists()) {
-      list.innerHTML = "No players on leaderboard yet.";
+(async function(){
+  try{
+    if(typeof firebase === 'undefined' && typeof getDatabase === 'undefined'){
+      console.warn("Firebase not ready, leaderboard skipped");
       return;
     }
+    const dbRef = (typeof ref === 'function') ? ref(getDatabase(), 'users') : firebase.database().ref('users');
+    const container = document.getElementById('leaderboardListEl') || document.querySelector('#leaderboard-section .custom-card');
+    if(!container) return;
 
-    const users = [];
-    snap.forEach(child => {
-      const u = child.val() || {};
-      users.push({
-        name: u.username || u.displayName || "Player",
-        cash: u.winningCash || 0
-      });
+    const snapshot = (dbRef.get) ? await get(dbRef) : await dbRef.once('value');
+    const data = snapshot.val() || {};
+    const users = Object.values(data)
+      .filter(u => u && u.username && typeof u.winningCash === 'number')
+      .sort((a,b)=>b.winningCash - a.winningCash)
+      .slice(0,10);
+
+    container.innerHTML = '';
+    users.forEach((u,i)=>{
+      const row = document.createElement('div');
+      row.className = 'leaderboard-item';
+      row.innerHTML = `
+        <div class="leaderboard-rank">#${i+1}</div>
+        <div class="leaderboard-user-info">
+          <div class="leaderboard-name">${u.username}</div>
+        </div>
+        <div class="leaderboard-earnings">₹${u.winningCash}</div>
+      `;
+      container.appendChild(row);
     });
-
-    users.sort((a,b) => b.cash - a.cash);
-
-    list.innerHTML = "";
-    users.forEach((u,i) => {
-      const row = document.createElement("div");
-      row.style.padding = "8px 0";
-      row.style.borderBottom = "1px solid #333";
-      row.innerHTML = `<span>#${i+1} ${u.name}</span><span style="float:right;color:#f5c542">₹${u.cash}</span>`;
-      list.appendChild(row);
-    });
-  } catch(e) {
+  }catch(e){
     console.error("Leaderboard error:", e);
-    list.innerHTML = "Failed to load leaderboard.";
   }
-}
-
-document.addEventListener("click", e => {
-  const el = e.target.closest("[data-section]");
-  if (el && el.dataset.section === "leaderboard-section") {
-    setTimeout(loadLeaderboard, 300);
-  }
-});
+})();
 </script>
+<!-- =============== END LEADERBOARD PATCH =============== -->
 
 </body>
 </html>
