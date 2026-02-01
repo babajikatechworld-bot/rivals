@@ -1253,6 +1253,13 @@ html, body {
   pointer-events: auto !important;
 }
 </style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getDatabase, ref, query, orderByChild, limitToLast, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+</script>
+
 </head>
 
 <body>
@@ -4353,56 +4360,55 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- ================= LEADERBOARD SECTION ================= -->
 <section id="leaderboard-section" style="display:none;padding:20px;">
   <h2 style="color:#f5c542;">Top Players</h2>
-  <div id="leaderboardList" style="margin-top:10px;"></div>
+  <div id="leaderboardList" style="margin-top:10px;color:#fff;"></div>
 </section>
 
+
 <script>
-// ================= LEADERBOARD LOADER =================
-async function loadLeaderboardData(){
-  try{
-    const listEl = document.getElementById("leaderboardList");
-    if(!listEl) return;
-    listEl.innerHTML = "Loading leaderboard...";
-    const snapshot = await get(ref(db, "users"));
-    if(!snapshot.exists()){
-      listEl.innerHTML = "Leaderboard is empty.";
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboardList");
+  if (!list || typeof db === "undefined") return;
+
+  list.innerHTML = "Loading leaderboard...";
+
+  try {
+    const q = query(ref(db, "users"), orderByChild("winningCash"), limitToLast(20));
+    const snap = await get(q);
+
+    if (!snap.exists()) {
+      list.innerHTML = "No players on leaderboard yet.";
       return;
     }
+
     const users = [];
-    snapshot.forEach(child => {
+    snap.forEach(child => {
       const u = child.val() || {};
-      if(typeof u.leaderboardRank === "number"){
-        users.push({
-          name: u.username || u.displayName || child.key,
-          cash: u.winningCash || 0,
-          rank: u.leaderboardRank
-        });
-      }
+      users.push({
+        name: u.username || u.displayName || "Player",
+        cash: u.winningCash || 0
+      });
     });
-    users.sort((a,b)=>a.rank-b.rank);
-    if(!users.length){
-      listEl.innerHTML = "Leaderboard is empty.";
-      return;
-    }
-    listEl.innerHTML = "";
-    users.forEach(u=>{
+
+    users.sort((a,b) => b.cash - a.cash);
+
+    list.innerHTML = "";
+    users.forEach((u,i) => {
       const row = document.createElement("div");
       row.style.padding = "8px 0";
-      row.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
-      row.textContent = `#${u.rank} ${u.name} — ₹${u.cash}`;
-      listEl.appendChild(row);
+      row.style.borderBottom = "1px solid #333";
+      row.innerHTML = `<span>#${i+1} ${u.name}</span><span style="float:right;color:#f5c542">₹${u.cash}</span>`;
+      list.appendChild(row);
     });
-  }catch(e){
-    console.error("Leaderboard load failed:", e);
+  } catch(e) {
+    console.error("Leaderboard error:", e);
+    list.innerHTML = "Failed to load leaderboard.";
   }
 }
 
-// Hook into section switcher if exists
-document.addEventListener("click", function(e){
-  const link = e.target.closest("[data-section]");
-  if(!link) return;
-  if(link.dataset.section === "leaderboard-section"){
-    setTimeout(loadLeaderboardData, 300);
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-section]");
+  if (el && el.dataset.section === "leaderboard-section") {
+    setTimeout(loadLeaderboard, 300);
   }
 });
 </script>
