@@ -13,6 +13,32 @@ function sanitizeHTML(input) {
 }
 </script>
 
+
+
+<script>
+(function fixScrollBlocker(){
+  function disableBadOverlays() {
+    document.querySelectorAll('[id*="chat"], [class*="chat"], #globalLoaderEl').forEach(el => {
+      try {
+        const r = el.getBoundingClientRect();
+        if (r.width > window.innerWidth * 0.8 && r.height > window.innerHeight * 0.8) {
+          el.style.pointerEvents = "none";
+        }
+      } catch(e){}
+    });
+  }
+
+  window.addEventListener("load", disableBadOverlays);
+
+  const obs = new MutationObserver(disableBadOverlays);
+  obs.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+
+
+
+
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Gaming Tournament</title>
@@ -48,22 +74,51 @@ function sanitizeHTML(input) {
             --info-color: #3B82F6; /* Blue for info */
             --login-purple-gradient: linear-gradient(135deg, #6B21A8, #A21CAF);
         }
-        
+
+.announcement-modal,
+.announcement-panel {
+  pointer-events: auto !important;
+}
+
+
         html, body {
-            overflow-x: hidden;
-            overscroll-behavior-x: none;
-        }
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+        
+        .main-content {
+  position: relative;
+ /*  height: calc(100vh - 60px - 65px); header + footer height */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 15px 15px 15px; /* TOP padding removed */
+}
+.main-content::-webkit-scrollbar {
+  width: 5px;
+}
+.main-content::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+}
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { font-size: 16px; scroll-behavior: smooth; }
-        body { font-family: 'Poppins', sans-serif; background-color: var(--primary-bg); color: var(--text-primary); padding-top: 70px; padding-bottom: 75px; min-height: 100vh; overscroll-behavior-y: contain; transition: background-color 0.3s, padding 0.3s; }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--primary-bg); color: var(--text-primary); padding-top: 60px; padding-bottom: 75px; min-height: 100vh; overscroll-behavior-y: contain; transition: background-color 0.3s, padding 0.3s; }
         
         body.details-active {
             padding-bottom: 90px;
         }
 
         a { color: var(--accent-color); text-decoration: none; } a:hover { color: #FBBF24; }
-        .main-content { padding: 15px; } .section { display: none; animation: fadeIn 0.3s ease-in-out; } .section.active { display: block; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to: { opacity: 1; transform: translateY(0); } }
+        .main-content {
+  position: relative;
+ /* height: calc(100vh - 60px - 65px);  header + footer height */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 15px 15px 15px; /* TOP padding removed */
+} .section { display: none; animation: fadeIn 0.3s ease-in-out; } .section.active { display: block; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to: { opacity: 1; transform: translateY(0); } }
         .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; color: var(--text-primary); } .custom-card { background-color: var(--card-bg); border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); } .btn-custom { border-radius: 6px; font-size: 0.9rem; font-weight: 500; padding: 10px 15px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease-out; } .btn-custom-primary { background-color: var(--primary-button-bg); color: var(--text-primary); } .btn-custom-primary:hover { background-color: #2563EB; filter: brightness(1.1); } .btn-custom-secondary { background-color: var(--secondary-bg); color: var(--text-primary); border: 1px solid var(--border-color); } .btn-custom-secondary:hover { background-color: #334155; } .btn-custom-accent { background: var(--accent-gradient); color: var(--primary-bg); font-weight: 600; } .btn-custom-accent:hover { filter: brightness(1.1); } .btn-custom:active { transform: scale(0.97); filter: brightness(0.95); } .btn-custom-link { background: none; border: none; color: var(--primary-button-bg); font-size: 0.9rem; font-weight: 500; padding: 0; cursor: pointer; } .text-accent { color: var(--accent-color); } .text-success { color: var(--success-color); } .text-danger { color: var(--danger-color); } .text-warning { color: var(--warning-color); } .form-control { background-color: var(--primary-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; } .form-control:focus { background-color: var(--primary-bg); border-color: var(--accent-color); color: var(--text-primary); box-shadow: 0 0 0 0.2rem rgba(250, 204, 21, 0.25); } .form-control::placeholder { color: var(--text-secondary); opacity: 0.7; } .form-label { color: var(--text-secondary); font-size: 0.9rem; } .alert { border-radius: 6px; font-size: 0.9rem; }
 
         .list-group-item {
@@ -1223,37 +1278,37 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
 </style>
 
 
+<script>
+(function(){
+  document.addEventListener('wheel', function(e){
+    const t = e.target.closest('.main-content');
+    if(!t){
+      const mc = document.querySelector('.main-content');
+      if(mc){
+        mc.scrollTop += e.deltaY;
+      }
+    }
+  }, {passive:false});
+})();
+</script>
+
 <style>
-/* === SCROLL + NEWS SAFE PATCH === */
-html, body {
-  height: 100% !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-}
-
+/* FIX: remove extra top black space above news/announcement */
 #news-section {
-  height: auto !important;
-  min-height: 100vh;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
-
-.app-container,
-.main-container,
-.page-wrapper {
-  overflow-y: auto !important;
-  height: auto !important;
+#news-section .custom-card:first-child {
+  margin-top: 0 !important;
 }
-
-/* Prevent loader/chat from blocking clicks */
-#globalLoaderEl {
-  pointer-events: none !important;
-}
-#globalLoaderEl.active {
-  pointer-events: auto !important;
+#newsListEl {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 </style>
 </head>
+
+
 
 <body>
 
@@ -1271,6 +1326,18 @@ html, body {
         <a href="https://firebase.google.com/docs/database/security" target="_blank" rel="noopener noreferrer">Learn how to secure rules.</a>
         <button onclick="this.parentElement.style.display='none'">Dismiss</button>
     </div>
+    
+<!-- Main Content Area -->
+    <main class="main-content">
+        <!-- NEW LOADER HTML -->
+        <div id="globalLoaderEl" style="display: none;">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+
+
 <button id="newsLoadMoreBtn" class="btn btn-outline-secondary w-100 mt-3">Load More</button>
 
     <!-- Header -->
@@ -1296,14 +1363,7 @@ html, body {
         </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-        <!-- NEW LOADER HTML -->
-        <div id="globalLoaderEl" style="display: none;">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
+    
 
         <!-- Login Section -->
         <section id="login-section" class="section">
@@ -4323,71 +4383,378 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
+<!-- ================= LIVE SUPPORT FLOATING ICON (EXTRA BIG, FULL TRANSPARENT) ================= -->
+<div id="floatingLiveSupport">
+  <i class="bi bi-chat-quote-fill"></i>
+  <span id="supportBadge"></span>
+</div>
+
+<style>
+#floatingLiveSupport{
+  position: fixed;
+  right: 18px;
+  bottom: 95px;
+  width: 84px;              /* 🔥 bigger */
+  height: 84px;             /* 🔥 bigger */
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Icon only */
+#floatingLiveSupport i{
+  font-size: 44px;           /* 🔥 much bigger icon */
+  color: #facc15;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* 🔴 Notification badge */
+#supportBadge{
+  position:absolute;
+  top:4px;
+  right:4px;
+  min-width:20px;
+  height:20px;
+  padding:0 6px;
+  background:red;
+  color:#fff;
+  font-size:12px;
+  font-weight:bold;
+  border-radius:999px;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+</style>
+
 <script>
-// === SCROLL UNLOCK + SAFE OVERLAY PATCH ===
 (function(){
-  function unlockScroll(){
-    document.documentElement.style.overflowY = 'auto';
-    document.body.style.overflowY = 'auto';
+  var btn = document.getElementById("floatingLiveSupport");
+  var badge = document.getElementById("supportBadge");
+  var isDragging=false, ox=0, oy=0;
+
+  function sync(){
+    var home=document.getElementById("home-section");
+    btn.style.display=(home && home.classList.contains("active"))?"flex":"none";
+  }
+  setInterval(sync,300);
+
+  /* drag */
+  btn.addEventListener("touchstart",function(e){
+    if(e.touches.length!==1) return;
+    isDragging=true;
+    var r=btn.getBoundingClientRect();
+    ox=e.touches[0].clientX-r.left;
+    oy=e.touches[0].clientY-r.top;
+  },{passive:true});
+
+  btn.addEventListener("touchmove",function(e){
+    if(!isDragging) return;
+    btn.style.left=(e.touches[0].clientX-ox)+'px';
+    btn.style.top=(e.touches[0].clientY-oy)+'px';
+    btn.style.right='auto';
+    btn.style.bottom='auto';
+  },{passive:true});
+
+  btn.addEventListener("touchend",()=>setTimeout(()=>isDragging=false,50));
+
+  btn.addEventListener("mousedown",e=>{
+    isDragging=true;
+    var r=btn.getBoundingClientRect();
+    ox=e.clientX-r.left;
+    oy=e.clientY-r.top;
+  });
+  document.addEventListener("mousemove",e=>{
+    if(!isDragging) return;
+    btn.style.left=(e.clientX-ox)+'px';
+    btn.style.top=(e.clientY-oy)+'px';
+    btn.style.right='auto';
+    btn.style.bottom='auto';
+  });
+  document.addEventListener("mouseup",()=>isDragging=false);
+
+  function openSupport(){
+    badge.style.display="none";
+    var menuBtn=document.querySelector('[data-section="live-support-section"], #liveSupportBtn, .live-support-btn');
+    if(menuBtn) menuBtn.click();
   }
 
-  window.addEventListener('load', unlockScroll);
-  setTimeout(unlockScroll, 500);
+  btn.addEventListener("click",()=>{ if(!isDragging) openSupport(); });
+  btn.addEventListener("touchend",()=>{ if(!isDragging) openSupport(); });
 
-  function disableBadOverlays(){
-    document.querySelectorAll('#liveChatMessagesEl, #globalLoaderEl').forEach(el => {
-      try {
-        const r = el.getBoundingClientRect();
-        if(r.width > window.innerWidth * 0.8 && r.height > window.innerHeight * 0.8){
-          el.style.pointerEvents = 'none';
-        }
-      } catch(e){}
-    });
-  }
-
-  const obs = new MutationObserver(disableBadOverlays);
-  obs.observe(document.body, {childList:true, subtree:true});
+  window.notifyLiveSupportUnread=function(count=1){
+    badge.textContent=count;
+    badge.style.display="flex";
+  };
 })();
 </script>
+<!-- ================= END LIVE SUPPORT ================= -->
 
-<!-- ================= LEADERBOARD PATCH ================= -->
+
+<!-- ===== Live Support Title Icon Fix ===== -->
+<style>
+#live-support-section .section-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+#live-support-section .section-title .ls-icon{
+  font-size:26px;
+  color:#facc15;
+}
+</style>
+
 <script>
-(async function(){
-  try{
-    if(typeof firebase === 'undefined' && typeof getDatabase === 'undefined'){
-      console.warn("Firebase not ready, leaderboard skipped");
-      return;
+document.addEventListener("DOMContentLoaded", function(){
+  const liveTitle = document.querySelector("#live-support-section .section-title");
+  if(liveTitle && !liveTitle.querySelector(".ls-icon")){
+    const icon = document.createElement("i");
+    icon.className = "bi bi-chat-quote-fill ls-icon";
+    liveTitle.prepend(icon);
+  }
+});
+</script>
+<!-- ===== End Live Support Title Icon Fix ===== -->
+
+
+<!-- ===== Live Support Floating Icon Badge FIX ===== -->
+<style>
+/* badge already exists – ensure correct position & visibility */
+#floatingLiveSupport{
+  position: fixed;
+}
+#floatingLiveSupport .support-badge,
+#supportBadge{
+  position:absolute;
+  top:0;
+  right:0;
+  transform: translate(30%, -30%);
+  min-width:20px;
+  height:20px;
+  padding:0 6px;
+  background:#ff0000;
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  border-radius:999px;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10000;
+  pointer-events:none;
+}
+</style>
+
+<script>
+/* ensure badge shows when admin sends message */
+(function(){
+  const badge = document.getElementById("supportBadge") || document.querySelector("#floatingLiveSupport .support-badge");
+
+  if(!badge) return;
+
+  // override / reinforce global notifier
+  window.notifyLiveSupportUnread = function(count=1){
+    badge.textContent = count;
+    badge.style.display = "flex";
+  };
+
+  // clear badge when live support opened
+  document.addEventListener("click", function(e){
+    if(e.target.closest("#floatingLiveSupport")){
+      badge.style.display = "none";
     }
-    const dbRef = (typeof ref === 'function') ? ref(getDatabase(), 'users') : firebase.database().ref('users');
-    const container = document.getElementById('leaderboardListEl') || document.querySelector('#leaderboard-section .custom-card');
-    if(!container) return;
+  });
+})();
+</script>
+<!-- ===== End Badge FIX ===== -->
 
-    const snapshot = (dbRef.get) ? await get(dbRef) : await dbRef.once('value');
-    const data = snapshot.val() || {};
-    const users = Object.values(data)
-      .filter(u => u && u.username && typeof u.winningCash === 'number')
-      .sort((a,b)=>b.winningCash - a.winningCash)
-      .slice(0,10);
 
-    container.innerHTML = '';
-    users.forEach((u,i)=>{
-      const row = document.createElement('div');
-      row.className = 'leaderboard-item';
-      row.innerHTML = `
-        <div class="leaderboard-rank">#${i+1}</div>
-        <div class="leaderboard-user-info">
-          <div class="leaderboard-name">${u.username}</div>
-        </div>
-        <div class="leaderboard-earnings">₹${u.winningCash}</div>
-      `;
-      container.appendChild(row);
+<!-- ===== Live Support Badge AUTO-DETECT FIX ===== -->
+<script>
+(function(){
+  const badge = document.getElementById("supportBadge");
+  if(!badge) return;
+
+  let unread = 0;
+  let liveOpen = false;
+
+  // detect when live support section is active
+  const observerSection = new MutationObserver(() => {
+    const sec = document.getElementById("live-support-section");
+    liveOpen = sec && sec.classList.contains("active");
+    if(liveOpen){
+      unread = 0;
+      badge.style.display = "none";
+    }
+  });
+  observerSection.observe(document.body, {subtree:true, attributes:true, attributeFilter:["class"]});
+
+  // observe chat container for new admin messages
+  const chatBox = document.querySelector("#live-support-section");
+  if(!chatBox) return;
+
+  const observerChat = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      m.addedNodes.forEach(node => {
+        if(!(node instanceof HTMLElement)) return;
+
+        // detect admin/support message
+        if(node.textContent && node.textContent.toLowerCase().includes("support")){
+          if(!liveOpen){
+            unread++;
+            badge.textContent = unread;
+            badge.style.display = "flex";
+          }
+        }
+      });
     });
-  }catch(e){
-    console.error("Leaderboard error:", e);
+  });
+
+  observerChat.observe(chatBox, {childList:true, subtree:true});
+})();
+</script>
+<!-- ===== End AUTO-DETECT FIX ===== -->
+
+
+<!-- ================= TOP NOTIFICATION ALERT SYSTEM ================= -->
+<div id="topNotificationAlert" class="top-alert">
+  <i class="bi bi-bell-fill"></i>
+  <span id="topAlertText">New notification</span>
+</div>
+
+<style>
+.top-alert{
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.55);
+  transition: top 0.4s ease;
+}
+.top-alert.show{
+  top: 78px; /* header ke niche */
+}
+.top-alert i{
+  color: #facc15;
+  font-size: 18px;
+}
+</style>
+
+<script>
+(function(){
+  const alertBox = document.getElementById("topNotificationAlert");
+  const alertText = document.getElementById("topAlertText");
+
+  function showTopAlert(message){
+    alertText.textContent = message;
+    alertBox.classList.add("show");
+    setTimeout(()=>alertBox.classList.remove("show"), 4500);
+  }
+
+  // 🔔 Firebase notification listener (same logic as notification bubble)
+  if(window.firebase && firebase.auth){
+    firebase.auth().onAuthStateChanged(user => {
+      if(!user) return;
+      firebase.database()
+        .ref("notifications/" + user.uid)
+        .limitToLast(1)
+        .on("child_added", snap => {
+          const data = snap.val();
+          if(data && data.read === false){
+            showTopAlert(data.message || "You have a new notification");
+          }
+        });
+    });
   }
 })();
 </script>
-<!-- =============== END LEADERBOARD PATCH =============== -->
+<!-- ================= END TOP NOTIFICATION ALERT ================= -->
+
+
+<!-- ================= SIMPLE TOP ALERT (FIXED TEXT) ================= -->
+<div id="topNotifyAlert" class="top-notify-fixed">
+  <i class="bi bi-bell-fill"></i>
+  <span>You have a new notification</span>
+</div>
+
+<style>
+.top-notify-fixed{
+  position: fixed;
+  top: -90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 99999;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.55);
+  transition: top 0.4s ease;
+}
+.top-notify-fixed.show{
+  top: 80px;
+}
+.top-notify-fixed i{
+  color:#facc15;
+}
+</style>
+
+<script>
+(function(){
+  const alertBox = document.getElementById("topNotifyAlert");
+
+  function showAlert(){
+    alertBox.classList.add("show");
+    setTimeout(()=>alertBox.classList.remove("show"), 4000);
+  }
+
+  /* 🔔 Hook existing notification icon badge */
+  const notifIcon = document.getElementById("notificationBtnEl");
+  if(!notifIcon) return;
+
+  const badge = notifIcon.querySelector(".notification-badge");
+  if(!badge) return;
+
+  let last = badge.textContent;
+
+  const observer = new MutationObserver(() => {
+    const curr = badge.textContent;
+    if(curr !== last && parseInt(curr) > 0){
+      showAlert();
+      last = curr;
+    }
+  });
+
+  observer.observe(badge, {childList:true, subtree:true});
+})();
+</script>
+<!-- ================= END SIMPLE TOP ALERT ================= -->
 
 </body>
 </html>
