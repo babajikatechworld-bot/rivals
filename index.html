@@ -1306,6 +1306,20 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
   padding-top: 0 !important;
 }
 </style>
+
+<style>
+.weekly-card{background:linear-gradient(145deg,#0f172a,#020617);padding:14px;border-radius:16px;margin-top:10px;
+box-shadow:0 10px 30px rgba(0,0,0,.6);}
+.weekly-header{display:flex;justify-content:space-between;color:#94a3b8;
+font-weight:700;padding:10px 14px;font-size:13px;letter-spacing:.5px}
+.weekly-row{display:flex;align-items:center;justify-content:space-between;
+padding:14px;border-radius:14px;margin-bottom:10px;background:#020617;
+border:1px solid rgba(255,255,255,.05)}
+.weekly-rank{font-weight:800;color:#facc15}
+.weekly-name{flex:1;margin-left:12px;font-weight:600}
+.weekly-win{color:#22c55e;font-weight:800}
+</style>
+
 </head>
 
 
@@ -1599,7 +1613,14 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
 
         <!-- Leaderboard Section (NEW) -->
         <section id="leaderboard-section" class="section">
-            <h2 class="section-title">Top Players</h2>
+
+<!-- NEW TOP PLAYERS (ADMIN LEADERBOARD) -->
+<div style="margin-top:30px">
+  <h3 style="text-align:center;margin-bottom:15px">🏆 Weekly Top Players</h3>
+  <div id="weeklyTopPlayersList"></div>
+</div>
+
+            <h2 class="section-title"></h2>
             <div id="leaderboardListEl" class="placeholder-glow">
                  <!-- Placeholder Leaderboard Item -->
                 <div class="leaderboard-item placeholder-glow mb-2">
@@ -1627,7 +1648,7 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
                     <span class="placeholder col-3" style="height: 20px;"></span>
                 </div>
             </div>
-             <p id="noLeaderboardMessageEl" class="text-secondary text-center mt-4" style="display: none;">Leaderboard is empty.</p>
+             <p id="noLeaderboardMessageEl" class="text-secondary text-center mt-4" style="display: none;"></p>
         </section>
 
 
@@ -1876,7 +1897,7 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
                     <div class="step-icon"><i class="bi bi-check"></i></div>
                     <div class="step-content">
                         <h5>Enter Payment UTR</h5>
-                        <p>After paying, enter the transaction ID (UTR) below.</p>
+                        <p>After paying, enter the 12 Digit (UTR) below.</p>
                         <input type="text" class="form-control" id="rechargeUtrInput" placeholder="Enter UTR here...">
                     </div>
                 </div>
@@ -1884,7 +1905,7 @@ img[loading="lazy"]{ content-visibility:auto; contain-intrinsic-size: 160px 300p
                     <div class="step-icon"><i class="bi bi-check"></i></div>
                     <div class="step-content">
                         <h5>Submit</h5>
-                         <p>Our agent will verify your payment shortly.</p>
+                         <p>Our System will verify your payment shortly Min(1 - 5 min)</p>
                     </div>
                 </div>
                 <div id="rechargeStep3Status" class="alert mt-4" style="display: none;"></div>
@@ -2204,6 +2225,14 @@ background:rgba(0,0,0,0.6);border-radius:50%;padding:24px;font-size:28px;color:w
     </nav>
 
 
+
+
+
+
+
+
+    
+
     <!-- JS Libraries -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
@@ -2234,6 +2263,12 @@ background:rgba(0,0,0,0.6);border-radius:50%;padding:24px;font-size:28px;color:w
             app = initializeApp(firebaseConfig);
             db = getDatabase(app);
             auth = getAuth(app);
+
+            // GLOBAL FIREBASE FIX
+            window.db = db;
+            window.get = get;
+            window.ref = ref;
+
 
             setPersistence(auth, browserLocalPersistence)
               .catch((error) => {
@@ -4778,38 +4813,73 @@ document.addEventListener("DOMContentLoaded", function(){
 <!-- ================= END SIMPLE TOP ALERT ================= -->
 
 
-<!-- FIREBASE INIT (ADD YOUR CONFIG) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
-const firebaseConfig = {
-  apiKey: "PASTE_KEY",
-  authDomain: "PASTE_DOMAIN",
-  databaseURL: "PASTE_DB_URL",
-  projectId: "PASTE_ID",
-  storageBucket: "PASTE_BUCKET",
-  messagingSenderId: "PASTE_SENDER",
-  appId: "PASTE_APPID"
-};
-firebase.initializeApp(firebaseConfig);
-</script>
-
-<script>
-async function loadLeaderboard(){
- const el=document.getElementById("leaderboardListEl");
- if(!el) return;
- el.innerHTML="Loading leaderboard...";
- const snap=await firebase.database().ref("leaderboard").once("value");
- if(!snap.exists()){el.innerHTML="Leaderboard is empty.";return;}
- const data=Object.values(snap.val());
- data.sort((a,b)=>b.winnings-a.winnings);
- el.innerHTML="";
- data.slice(0,50).forEach((p,i)=>{
-   el.innerHTML+=`<div class="leaderboard-item"><div>#${i+1}</div><div>${p.name}</div><div>₹${p.winnings}</div></div>`;
- });
+async function loadWeeklyTopPlayers(){
+ const list=document.getElementById("weeklyTopPlayersList");
+ if(!list) return;
+ list.innerHTML="Loading top players...";
+ try{
+   const snap=await get(ref(db,"weeklyLeaderboard"));
+   list.innerHTML=`
+<div class="weekly-card"><div class="weekly-header">
+  <div>Rank</div>
+  <div class="weekly-name">Player Name</div>
+  <div>Winnings</div>
+</div>`;
+   if(!snap.exists()){ list.innerHTML="No top players yet"; return;}
+   const data=snap.val();
+   Object.keys(data).sort((a,b)=>a-b).forEach(rank=>{
+     const p=data[rank];
+     let medal=rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":"";
+     list.innerHTML+=`
+      <div class="weekly-row">
+        <div class="weekly-rank">${medal} #${rank}</div>
+        <div class="weekly-name">${p.name}</div>
+        <div class="weekly-win">₹${p.winnings}</div>
+      </div>`;
+   });
+ }catch(e){ list.innerHTML="Error loading"; }
 }
-window.addEventListener("load",()=>setTimeout(loadLeaderboard,2000));
+window.addEventListener("load",()=>setTimeout(loadWeeklyTopPlayers,1200));
 </script>
 
+
+
+<script>
+async function loadWeeklyTopPlayers(){
+ const list=document.getElementById("weeklyTopPlayersList");
+ if(!list || !window.db) return;
+ list.innerHTML="Loading top players...";
+ try{
+   const snap = await window.get(window.ref(window.db,"weeklyLeaderboard"));
+   if(!snap.exists()){
+     list.innerHTML="No top players yet";
+     return;
+   }
+   const data = snap.val();
+   list.innerHTML=`
+<div class="weekly-card"><div class="weekly-header">
+  <div>Rank</div>
+  <div class="weekly-name">Player Name</div>
+  <div>Winnings</div>
+</div>`;
+   Object.keys(data).sort((a,b)=>a-b).forEach(rank=>{
+     const p=data[rank];
+     let medal=rank==1?"🥇":rank==2?"🥈":rank==3?"🥉":"";
+     list.innerHTML+=`
+      <div class="weekly-row">
+        <div class="weekly-rank">${medal} #${rank}</div>
+        <div class="weekly-name">${p.name}</div>
+        <div class="weekly-win">₹${p.winnings}</div>
+      </div>`;
+   });
+ }catch(e){
+   console.log("Leaderboard error:",e);
+   list.innerHTML="Error loading Top Players";
+ }
+}
+setTimeout(loadWeeklyTopPlayers,3000);
+</script>
 </body>
+
 </html>
