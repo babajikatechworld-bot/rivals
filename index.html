@@ -1342,6 +1342,219 @@ background:linear-gradient(90deg,#020617,#030a1a);border:1px solid rgba(255,255,
 .weekly-win{font-size:20px;font-weight:900;color:#22c55e;}
 </style>
 
+
+<style>
+/* =========================
+   DESKTOP RESPONSIVE FIX
+   ========================= */
+@media (min-width: 992px) {
+
+  body {
+    background: #020617;
+  }
+
+  .app-header,
+  .main-content,
+  .bottom-nav {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .app-header {
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0 0 12px 12px;
+  }
+
+  .main-content {
+    padding: 20px 30px 30px;
+    height: auto;
+    min-height: calc(100vh - 60px);
+  }
+
+  #gamesListEl {
+    row-gap: 24px;
+  }
+
+  .game-card img {
+    height: 160px;
+  }
+
+  .game-card span {
+    font-size: 1rem;
+  }
+
+  .tournament-card {
+    margin-bottom: 25px;
+  }
+
+  .tournament-card-title {
+    font-size: 1.15rem;
+  }
+
+  .tournament-card-info strong {
+    font-size: 1rem;
+  }
+
+  #login-section .container {
+    max-width: 520px;
+  }
+
+  /* center bottom nav for desktop */
+  .bottom-nav {
+    position: sticky;
+    bottom: 20px;
+    border-radius: 16px;
+    max-width: 600px;
+  }
+}
+</style>
+
+
+<style>
+/* ===== FIX BIG BANNER & FOOTER POSITION (DESKTOP) ===== */
+@media (min-width: 992px) {
+
+  /* Banner image fix */
+  .details-banner,
+  .tournament-banner-image,
+  .swiper-container#promotionSliderEl {
+    max-height: 420px;
+    object-fit: cover;
+  }
+
+  .swiper-container#promotionSliderEl {
+    height: 380px;
+  }
+
+  /* Prevent banner from pushing footer */
+  .main-content {
+    padding-bottom: 120px !important;
+  }
+
+  /* Footer fixed at bottom properly */
+  .bottom-nav {
+    position: fixed !important;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 20px;
+    z-index: 1200;
+  }
+}
+</style>
+
+
+<style>
+/* ===== DESKTOP FINAL FIX v3 ===== */
+@media (min-width: 992px) {
+
+  /* Increase left-right margin without changing background */
+  .main-content {
+    padding-left: 60px !important;
+    padding-right: 60px !important;
+    padding-bottom: 140px !important; /* space for footer */
+  }
+
+  /* Banner height fix */
+  .swiper-container#promotionSliderEl {
+    height: 320px !important;
+    max-height: 320px !important;
+  }
+
+  .swiper-slide img,
+  .tournament-banner-image,
+  .details-banner {
+    max-height: 320px !important;
+    object-fit: cover !important;
+  }
+
+  /* Header spacing from banner */
+  #home-section {
+    margin-top: 10px !important;
+  }
+
+  /* Footer strictly fixed at bottom */
+  .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: 20px !important;
+    width: 600px !important;
+    max-width: 600px !important;
+    z-index: 1500 !important;
+  }
+}
+</style>
+
+
+<style>
+/* ===== DESKTOP BACKGROUND COLOR FIX ===== */
+@media (min-width: 992px) {
+  body {
+    background-color: #000000 !important;
+  }
+
+  .main-content {
+    background-color: transparent !important;
+  }
+}
+</style>
+
+
+<style>
+/* ===== DESKTOP UI POLISH v4 (PREMIUM) ===== */
+@media (min-width: 992px) {
+
+  /* Overall container width */
+  .app-header,
+  .main-content {
+    max-width: 1280px !important;
+  }
+
+  /* Banner refinement */
+  .swiper-container#promotionSliderEl {
+    height: 280px !important;
+    border-radius: 18px !important;
+    overflow: hidden;
+    margin-bottom: 35px !important;
+  }
+
+  /* My Matches cards in one clean row */
+  .matches-container {
+    gap: 24px !important;
+  }
+
+  .match-box {
+    padding: 22px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, #0b0b0b, #000000);
+  }
+
+  /* Games grid spacing */
+  #gamesListEl {
+    row-gap: 30px !important;
+  }
+
+  /* Slimmer premium footer */
+  .bottom-nav {
+    height: 58px !important;
+    padding: 6px 10px !important;
+    border-radius: 18px !important;
+    background: rgba(15,15,15,0.85) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  .bottom-nav i {
+    font-size: 20px !important;
+  }
+
+  .bottom-nav span {
+    font-size: 11px !important;
+  }
+}
+</style>
+
 </head>
 
 
